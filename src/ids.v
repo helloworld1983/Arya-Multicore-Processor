@@ -1,3 +1,27 @@
+//////////////////////////////////
+// IDS_CMD [0] 	= send a reset
+// IDS_CMD [1] 	= setup memory
+// IDS_CMD [2] 	= verify mem
+// IDS_CMD [3]    = set debug mode on
+// IDS_CMD [4] 	= enable stepinto
+// IDS_CMD [5] 	= stepvalue bit 0
+// IDS_CMD [6] 	= stepvalue bit 1
+// IDS_CMD [7] 	= stepvalue bit 2
+// IDS_CMD [8] 	= 
+// IDS_CMD [9] 	= 
+// IDS_CMD [10] 	=
+// IDS_CMD [11] 	= 
+// IDS_CMD [12] 	= 
+// IDS_CMD [13] 	= 
+
+
+////
+
+
+
+
+
+
 `timescale 1ns/1ps
 // defines
 
@@ -7,7 +31,9 @@
 `define MEM_ADDR_WIDTH 10
 `define INST_MEM_START 0
 `define DATA_MEM_START 512
-
+`define NUM_COUNTERS 0
+`define NUM_SOFTWARE_REGS 3
+`define NUM_HARDWARE_REGS 2
 
 module ids 
    #(
@@ -61,11 +87,12 @@ module ids
    reg                           out_wr_int;
 
    // software registers 
-   wire [31:0]                   pattern_high;
-   wire [31:0]                   pattern_low;
+   wire [31:0]                   mem_addr_in;
+   wire [31:0]                   mem_data_in;
    wire [31:0]                   ids_cmd;
    // hardware registers
-   reg [31:0]                    matches;
+	reg [31:0]                    mem_data_out;
+	reg [31:0]						   pc_out;
 
    // internal state
    reg [1:0]                     state, state_next;
@@ -77,29 +104,46 @@ module ids
    parameter                     PAYLOAD = 2'b10;
 
  
-   //------------------------- Local assignments -------------------------------
+   //------------------------- Local assignments DONOT TOUCH -------------------------------
 
    assign in_rdy     = out_rdy;
    assign out_wr     = in_wr;
    assign out_data   = in_data;
    assign out_ctrl   = in_ctrl;
+	
+	
+	//---------- Local assignments you may touch ---------------------------------------
       
    //------------------------- Modules-------------------------------
 	
+	debugger db (
+	.debug_en					(ids_cmd[3]),
+	.stepinto_en				(ids_cmd[4]),
+	.stepvalue					(ids_cmd[7:5]),
+	.clk_in						(clk),
+	.clk_out						(cpu_clk)
+	);
+	
+	
 	arya core1 (
-	.mem_addr_in			(),
-	.mem_addr_out
-	)
+	.mem_addr_in				(mem_addr_in), // Address of memory written by software regs
+	.mem_data_in				(mem_data_in), // Data of memory written by software regs
+	.mem_data_out				(unified_memout_portb),
+	.clk							(cpu_clk),
+	.reset						(ids_cmd[0]),
+	.setup_mem					(ids_cmd[1]),
+	.verify_mem					(ids_cmd[2])
+	);
 	
 
    generic_regs
    #( 
       .UDP_REG_SRC_WIDTH   (UDP_REG_SRC_WIDTH),
-      .TAG                 (`IDS_BLOCK_ADDR),          // Tag -- eg. MODULE_TAG
+      .TAG                 (`IDS_BLOCK_TAG),          // Tag -- eg. MODULE_TAG
       .REG_ADDR_WIDTH      (`IDS_REG_ADDR_WIDTH),     // Width of block addresses -- eg. MODULE_REG_ADDR_WIDTH
-      .NUM_COUNTERS        (0),                 // Number of counters
-      .NUM_SOFTWARE_REGS   (3),                 // Number of sw regs
-      .NUM_HARDWARE_REGS   (1)                  // Number of hw regs
+      .NUM_COUNTERS        (`NUM_COUNTERS),                 // Number of counters
+      .NUM_SOFTWARE_REGS   (`NUM_SOFTWARE_REGS),                 // Number of sw regs
+      .NUM_HARDWARE_REGS   (`NUM_HARDWARE_REGS)                  // Number of hw regs
    ) module_regs (
       .reg_req_in       (reg_req_in),
       .reg_ack_in       (reg_ack_in),
@@ -120,16 +164,25 @@ module ids
       .counter_decrement(),
 
       // --- SW regs interface
-      .software_regs    ({ids_cmd,pattern_low,pattern_high}),
+      .software_regs    ({ids_cmd,mem_data_in,mem_addr_in}),
 
       // --- HW regs interface
-      .hardware_regs    (matches),
+      .hardware_regs    ({pc_out,mem_data_out}),
 
       .clk              (clk),
       .reset            (reset)
     );
 
-
+   //------------------------- Logic-------------------------------
+	
+	always @(posedge clk) begin
+		if (reset) begin
+			mem_data_out <= 0;
+		end
+		else begin
+			mem_data_out <= unified_memout_portb;
+		end
+	end //always
 
 
 endmodule 
