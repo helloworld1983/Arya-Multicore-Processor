@@ -4,8 +4,7 @@
 `define INST_WIDTH 32
 `define REGFILE_ADDR 3
 `define DATAPATH_WIDTH 64
-`define INST_MEM_ADDR 9
-`define DATA_MEM_ADDR 9
+`define MEM_ADDR_WIDTH 10
 `define INST_MEM_START 0
 `define DATA_MEM_START 512
 
