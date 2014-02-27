@@ -18,33 +18,41 @@
 // Additional Comments: 
 //
 //////////////////////////////////////////////////////////////////////////////////
+
+`define INST_WIDTH 32
+`define REGFILE_ADDR 3
+`define DATAPATH_WIDTH 64
+`define MEM_ADDR_WIDTH 10
+`define INST_MEM_START 0
+`define DATA_MEM_START 512
+
 module regfile(
-    input [2:0] r0addr,
-    input [2:0] r1addr,
-    input [2:0] waddr,
-    input [63:0] wdata,
-    output [63:0] r0data,
-    output [63:0] r1data,
+    input [`REGFILE_ADDR-1:0] r0addr,
+    input [`REGFILE_ADDR-1:0] r1addr,
+    input [`REGFILE_ADDR-1:0] waddr,
+    input [`DATAPATH_WIDTH-1:0] wdata,
+    output [`DATAPATH_WIDTH-1:0] r0data,
+    output [`DATAPATH_WIDTH-1:0] r1data,
     input wena,
     input clk,
 	 input reset
     );
 
-reg [63:0] regfile [0:7];
+reg [`DATAPATH_WIDTH-1:0] regfile [0:(2 ** `REGFILE_ADDR)-1 ];
 
 assign r0data = regfile[r0addr];
 assign r1data = regfile[r1addr];
 
 always @(posedge clk) begin
   if (reset) begin
-	 regfile[0] <= 0'h00000000;
-	 regfile[1] <= 0'h00000000;
-	 regfile[2] <= 0'h00000000;
-	 regfile[3] <= 0'h00000000;
-	 regfile[4] <= 0'h00000000;
-	 regfile[5] <= 0'h00000000;
-	 regfile[6] <= 0'h00000000;
-	 regfile[7] <= 0'h00000000;
+	 regfile[0] <= 'd0;
+	 regfile[1] <= 'd0;
+	 regfile[2] <= 'd0;
+	 regfile[3] <= 'd0;
+	 regfile[4] <= 'd0;
+	 regfile[5] <= 'd0;
+	 regfile[6] <= 'd0;
+	 regfile[7] <= 'd0;
     end 
   else begin
 	 if (wena) 

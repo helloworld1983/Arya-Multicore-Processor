@@ -18,19 +18,26 @@
 // Additional Comments: 
 //
 //////////////////////////////////////////////////////////////////////////////////
-module pc_incrementor(
-    input clk,
-	 input en,
-	 input reset,
-    output [9:0] pc_out
-    );
 
-reg [9:0] pc_out;
+`define INST_WIDTH 32
+`define REGFILE_ADDR 3
+`define DATAPATH_WIDTH 64
+`define MEM_ADDR_WIDTH 10
+`define INST_MEM_START 0
+`define DATA_MEM_START 512
+
+module pc_incrementor(clk, en, reset, pc_out);
+    input clk;
+	 input en;
+	 input reset;
+    output [`MEM_ADDR_WIDTH-1:0] pc_out;
+   
+	 reg [`MEM_ADDR_WIDTH-1:0] pc_out;
 
 always @ (posedge clk)
  begin : COUNTER 
    if (reset == 1'b1) begin
-     pc_out <=   10'd0;
+     pc_out <=   'd0;
    end
    else if (en == 1'b1) begin
      pc_out <=  pc_out + 1;

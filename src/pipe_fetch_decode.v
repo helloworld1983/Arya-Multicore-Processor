@@ -18,12 +18,30 @@
 // Additional Comments: 
 //
 //////////////////////////////////////////////////////////////////////////////////
+
+`define INST_WIDTH 32
+`define REGFILE_ADDR 3
+`define DATAPATH_WIDTH 64
+`define MEM_ADDR_WIDTH 10
+`define INST_MEM_START 0
+`define DATA_MEM_START 512
+
 module pipe_fetch_decode(inst_in,clk,en,reset,inst_out);
-    input [31:0] inst_in;
+    input [`INST_WIDTH-1:0] inst_in;
 	 input clk;
 	 input en;
 	 input reset; 
-    output [31:0] inst_out;
-    
-
+    output [`INST_WIDTH-1:0] inst_out;
+	 
+	 reg [`INST_WIDTH-1:0] inst_out;
+	 
+always @ (posedge clk) 
+  begin
+	 if (reset) begin
+		inst_out <= 'd0;
+	 end
+	 else if (en) begin
+		inst_out <= inst_in;
+	 end
+  end
 endmodule
