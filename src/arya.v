@@ -22,19 +22,19 @@
 `define INST_WIDTH 32
 `define REGFILE_ADDR 3
 `define DATAPATH_WIDTH 64
-`define INST_MEM_ADDR 9
-`define DATA_MEM_ADDR 9
+`define MEM_ADDR_WIDTH 10
 `define INST_MEM_START 0
 `define DATA_MEM_START 512
 
 module arya(
     input clk,
     input reset,
-    input [9:0] mem_addr_in,
-    input [63:0] mem_data_in,
+	 input en,
+    input [`MEM_ADDR_WIDTH-1:0] mem_addr_in,
+    input [`DATAPATH_WIDTH-1:0] mem_data_in,
     input setup_mem,
 	 input verify_mem,
-    output [63:0] mem_data_out
+    output [`DATAPATH_WIDTH-1:0] mem_data_out
     );
 
 pc_incrementor pc (
@@ -97,11 +97,12 @@ pipe_mem_wb mem_wb (
     .Mem_data_out(mw_Mem_data_out)
     );
 
-wire wr_addr_in, enable_mem_debug;
+wire enable_mem_debug;
+wire [`MEM_ADDR_WIDTH-1:0] wr_addr_in;
 assign enable_mem_debug = setup_mem || verify_mem;
 assign wr_addr_in = enable_mem_debug ? mem_addr_in : pc_out;
 
-unified_memory memory (.addra(addr_in),
+unified_memory memory (.addra(wr_addr_in),
 							  .dina(mem_data_in),
 							  .clka(clk),
 							  .wea(setup_mem),
