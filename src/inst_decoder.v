@@ -19,6 +19,8 @@
 //
 //////////////////////////////////////////////////////////////////////////////////
 
+
+
 `define INST_WIDTH 32
 `define REGFILE_ADDR 3
 `define DATAPATH_WIDTH 64
@@ -31,7 +33,7 @@ module inst_decoder(clk, reset, en, inst_in, r0addr_out, r1addr_out, WRegEn_out,
 	 input clk;
 	 input reset;
 	 input en;
-    input [`INST_WIDTH-1:0] inst_in;
+    input [`DATAPATH_WIDTH-1:0] inst_in;
     output [`REGFILE_ADDR-1:0] r0addr_out;
     output [`REGFILE_ADDR-1:0] r1addr_out;
     output WRegEn_out;

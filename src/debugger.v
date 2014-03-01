@@ -18,6 +18,16 @@
 // Additional Comments: 
 //
 //////////////////////////////////////////////////////////////////////////////////
+
+`define INST_WIDTH 32
+`define REGFILE_ADDR 3
+`define DATAPATH_WIDTH 64
+`define MEM_ADDR_WIDTH 10
+`define INST_MEM_START 0
+`define DATA_MEM_START 512
+`define NUM_COUNTERS 0
+`define NUM_SOFTWARE_REGS 4
+`define NUM_HARDWARE_REGS 3
 module debugger(
 	 input debug_en,
     input stepinto_en,

@@ -83,7 +83,7 @@ output [63 : 0] doutb;
 		.C_HAS_REGCEB(0),
 		.C_HAS_SSRA(0),
 		.C_HAS_SSRB(0),
-		.C_INIT_FILE_NAME("no_coe_file_loaded"),
+		.C_INIT_FILE_NAME("unified_memory.mif"),
 		.C_LOAD_INIT_FILE(0),
 		.C_MEM_TYPE(2),
 		.C_MUX_PIPELINE_STAGES(0),

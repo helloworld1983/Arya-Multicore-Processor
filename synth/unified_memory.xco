@@ -1,7 +1,7 @@
 ##############################################################
 #
-# Xilinx Core Generator version K.31
-# Date: Thu Feb 27 12:24:42 2014
+# Xilinx Core Generator version K.39
+# Date: Sat Mar 01 06:14:27 2014
 #
 ##############################################################
 #
@@ -38,7 +38,6 @@ SELECT Block_Memory_Generator family Xilinx,_Inc. 2.7
 CSET algorithm=Minimum_Area
 CSET assume_synchronous_clk=false
 CSET byte_size=9
-CSET coe_file=no_coe_file_loaded
 CSET collision_warnings=ALL
 CSET component_name=unified_memory
 CSET disable_collision_warnings=false
@@ -74,5 +73,5 @@ CSET write_width_a=64
 CSET write_width_b=64
 # END Parameters
 GENERATE
-# CRC: 2f9f4b62
+# CRC: dee70021
 

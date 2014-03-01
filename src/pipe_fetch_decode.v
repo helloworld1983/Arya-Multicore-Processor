@@ -27,13 +27,13 @@
 `define DATA_MEM_START 512
 
 module pipe_fetch_decode(inst_in,clk,en,reset,inst_out);
-    input [`INST_WIDTH-1:0] inst_in;
+    input [`DATAPATH_WIDTH-1:0] inst_in;
 	 input clk;
 	 input en;
 	 input reset; 
-    output [`INST_WIDTH-1:0] inst_out;
+    output [`DATAPATH_WIDTH-1:0] inst_out;
 	 
-	 reg [`INST_WIDTH-1:0] inst_out;
+	 reg [`DATAPATH_WIDTH-1:0] inst_out;
 	 
 always @ (posedge clk) 
   begin

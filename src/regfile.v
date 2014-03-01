@@ -40,19 +40,34 @@ module regfile(
 
 reg [`DATAPATH_WIDTH-1:0] regfile [0:(2 ** `REGFILE_ADDR)-1 ];
 
-assign r0data = regfile[r0addr];
-assign r1data = regfile[r1addr];
+initial regfile[0] = 64'h00000000; 
+initial regfile[1] = 64'h0;
+initial regfile[2] = 64'h0;
+initial regfile[3] = 64'h0;
+initial regfile[4] = 64'h0;
+initial regfile[5] = 64'h0;
+initial regfile[6] = 64'h0;
+initial regfile[7] = 64'h0;
+
+
+
+assign	r0data = regfile[r0addr];
+assign	r1data = regfile[r1addr];
+
+//wire [`DATAPATH_WIDTH-1:0] regfile_next [0:(2 ** `REGFILE_ADDR)-1 ];
+
+
 
 always @(posedge clk) begin
   if (reset) begin
-	 regfile[0] <= 'd0;
-	 regfile[1] <= 'd0;
-	 regfile[2] <= 'd0;
-	 regfile[3] <= 'd0;
-	 regfile[4] <= 'd0;
-	 regfile[5] <= 'd0;
-	 regfile[6] <= 'd0;
-	 regfile[7] <= 'd0;
+	 regfile[0] <= 64'h00000000;
+	 regfile[1] <= 64'h00000000;
+	 regfile[2] <= 64'h00000000;
+	 regfile[3] <= 64'h00000000;
+	 regfile[4] <= 64'h00000000;
+	 regfile[5] <= 64'h00000000;
+	 regfile[6] <= 64'h00000000;
+	 regfile[7] <= 64'h00000000;
     end 
   else begin
 	 if (wena) 
