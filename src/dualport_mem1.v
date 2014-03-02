@@ -30,17 +30,18 @@
 // supported by Xilinx, Mentor Graphics and Synplicity synthesis
 // tools. Ensure they are correct for your synthesis tool(s).
 
-// You must compile the wrapper file unified_memory.v when simulating
-// the core, unified_memory. When compiling the wrapper file, be sure to
+// You must compile the wrapper file dualport_mem1.v when simulating
+// the core, dualport_mem1. When compiling the wrapper file, be sure to
 // reference the XilinxCoreLib Verilog simulation library. For detailed
 // instructions, please refer to the "CORE Generator Help".
 
 `timescale 1ns/1ps
 
-module unified_memory(
+module dualport_mem1(
 	clka,
 	dina,
 	addra,
+	ena,
 	wea,
 	douta,
 	clkb,
@@ -53,6 +54,7 @@ module unified_memory(
 input clka;
 input [63 : 0] dina;
 input [9 : 0] addra;
+input ena;
 input [0 : 0] wea;
 output [63 : 0] douta;
 input clkb;
@@ -63,7 +65,7 @@ output [63 : 0] doutb;
 
 // synthesis translate_off
 
-      BLK_MEM_GEN_V2_7 #(
+      BLK_MEM_GEN_V2_8 #(
 		.C_ADDRA_WIDTH(10),
 		.C_ADDRB_WIDTH(10),
 		.C_ALGORITHM(1),
@@ -73,7 +75,7 @@ output [63 : 0] doutb;
 		.C_DISABLE_WARN_BHV_COLL(0),
 		.C_DISABLE_WARN_BHV_RANGE(0),
 		.C_FAMILY("virtex2p"),
-		.C_HAS_ENA(0),
+		.C_HAS_ENA(1),
 		.C_HAS_ENB(0),
 		.C_HAS_MEM_OUTPUT_REGS_A(0),
 		.C_HAS_MEM_OUTPUT_REGS_B(0),
@@ -83,7 +85,7 @@ output [63 : 0] doutb;
 		.C_HAS_REGCEB(0),
 		.C_HAS_SSRA(0),
 		.C_HAS_SSRB(0),
-		.C_INIT_FILE_NAME("unified_memory.mif"),
+		.C_INIT_FILE_NAME("no_coe_file_loaded"),
 		.C_LOAD_INIT_FILE(0),
 		.C_MEM_TYPE(2),
 		.C_MUX_PIPELINE_STAGES(0),
@@ -104,7 +106,7 @@ output [63 : 0] doutb;
 		.C_WEB_WIDTH(1),
 		.C_WRITE_DEPTH_A(1024),
 		.C_WRITE_DEPTH_B(1024),
-		.C_WRITE_MODE_A("READ_FIRST"),
+		.C_WRITE_MODE_A("WRITE_FIRST"),
 		.C_WRITE_MODE_B("READ_FIRST"),
 		.C_WRITE_WIDTH_A(64),
 		.C_WRITE_WIDTH_B(64),
@@ -113,6 +115,7 @@ output [63 : 0] doutb;
 		.CLKA(clka),
 		.DINA(dina),
 		.ADDRA(addra),
+		.ENA(ena),
 		.WEA(wea),
 		.DOUTA(douta),
 		.CLKB(clkb),
@@ -120,7 +123,6 @@ output [63 : 0] doutb;
 		.ADDRB(addrb),
 		.WEB(web),
 		.DOUTB(doutb),
-		.ENA(),
 		.REGCEA(),
 		.SSRA(),
 		.ENB(),
@@ -134,7 +136,7 @@ output [63 : 0] doutb;
 
 // XST black box declaration
 // box_type "black_box"
-// synthesis attribute box_type of unified_memory is "black_box"
+// synthesis attribute box_type of dualport_mem1 is "black_box"
 
 endmodule
 

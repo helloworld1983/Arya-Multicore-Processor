@@ -32,9 +32,9 @@ module pc_incrementor(clk, en, reset, pc_out);
     input clk;
 	 input en;
 	 input reset;
-    output [`MEM_ADDR_WIDTH-1:0] pc_out;
+    output [`MEM_ADDR_WIDTH-1-1:0] pc_out;
    
-	 reg [`MEM_ADDR_WIDTH-1:0] pc_out;
+	 reg [`MEM_ADDR_WIDTH-1-1:0] pc_out;
 
 always @ (posedge clk)
  begin : COUNTER 

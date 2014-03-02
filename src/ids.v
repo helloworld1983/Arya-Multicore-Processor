@@ -4,7 +4,7 @@
 // dbs_cmd [0] 	= send a reset
 // dbs_cmd [1] 	= setup memory
 // dbs_cmd [2] 	= verify mem
-// dbs_cmd [3]    = set debug mode on
+// dbs_cmd [3]  = set debug mode on
 // dbs_cmd [4] 	= enable stepinto
 // dbs_cmd [5] 	= stepvalue bit 0
 // dbs_cmd [6] 	= stepvalue bit 1
@@ -16,9 +16,9 @@
 // dbs_cmd [12] 	= unused
 // dbs_cmd [13] 	= unused
 ////////////////////////////////////
-// [31:0] 	dbs_input_high_data 	= upper 32 bits of data to program memory
+// [31:0] 	dbs_input_data_high 	= upper 32 bits of data to program memory
 ////////////////////////////////////
-// [31:0] 	dbs_input_low_data 	= lower 32 bits of data to program memory
+// [31:0] 	dbs_input_data_low 	= lower 32 bits of data to program memory
 ////////////////////////////////////
 // [31:0] 	dbs_input_addr 			= memory address to program
 ///////////////////////////////////
@@ -27,9 +27,9 @@
 /////////////////////////////////////
 ///// HARDWARE REGS//////////////////
 ////////////////////////////////////
-// [31:0]	dbh_data_high_out		= upper 32 bits of data read from mem
+// [31:0]	dbh_output_data_high		= upper 32 bits of data read from mem
 /////////////////////////////////////
-// [31:0]	dbh_data_low_out		= lower 32 bits of data read from mem
+// [31:0]	dbh_output_data_low		= lower 32 bits of data read from mem
 ////////////////////////////////////
 // [31:0]	dbh_step_count		 	= Number of steps the simulation has run
 ////////////////////////////////////
@@ -101,13 +101,13 @@ module ids
 
    // software registers 
    wire [31:0]                   dbs_cmd;
-   wire [31:0]                   dbs_input_high_data;
-   wire [31:0]                   dbs_input_low_data;
-	wire [31:0]						   dbs_input_addr;
+   wire [31:0]                   dbs_input_data_high;
+   wire [31:0]                   dbs_input_data_low;
+	wire [31:0]				     dbs_input_addr;
    // hardware registers
-	reg [31:0]                    dbh_data_high_out;
-	reg [31:0]						   dbh_data_low_out;
-	reg [31:0]							dbh_step_count;
+	reg [31:0]                    dbh_output_data_high;
+	reg [31:0]					  dbh_output_data_low;
+	reg [31:0]					  dbh_step_count;
 
    // internal state
    reg [1:0]                     state, state_next;
@@ -130,7 +130,7 @@ module ids
 	//---------- Local assignments you may touch ---------------------------------------
       
    //------------------------- Modules-------------------------------
-	
+/*	
 	debugger db (
 	.debug_en					(dbs_cmd[3]), 	// Enable debug mode
 	.stepinto_en				(dbs_cmd[4]), 	// Enable this to trigger step-into after loading stepvalue
@@ -138,15 +138,17 @@ module ids
 	.clk_in						(clk),
 	.clk_out						(cpu_clk)
 	);
-	
-	wire [31:0] memory_data_high_out;
-	wire [31:0] memory_data_low_out;
+
+    */
+    
+	wire [31:0] memory_output_data_high;
+	wire [31:0] memory_output_data_low;
 	
 	arya core1 (
-	.mem_addr_in				(dbs_input_addr), // Address of memory written by software regs
+	.mem_addr_in				(dbs_input_addr[9:0]), // Address of memory written by software regs
 	.mem_data_in				({dbs_input_data_high, dbs_input_data_low}), // Data of memory written by software regs
-	.mem_data_out				({memory_data_high_out, memory_data_low_out}),
-	.clk							(cpu_clk),
+	.mem_data_out				({memory_output_data_high, memory_output_data_low}),
+	.clk						(clk),
 	.en							(1),			// Forcing it to be one.
 	.reset						(dbs_cmd[0]),
 	.setup_mem					(dbs_cmd[1]),
@@ -182,10 +184,10 @@ module ids
       .counter_decrement(),
 
       // --- SW regs interface
-      .software_regs    ({dbs_input_addr,dbs_input_low_data,dbs_input_high_data,dbs_cmd}),
+      .software_regs    ({dbs_input_addr,dbs_input_data_low,dbs_input_data_high,dbs_cmd}),
 
       // --- HW regs interface
-      .hardware_regs    ({dbh_step_count,dbh_data_low_out,dbh_data_high_out}),
+      .hardware_regs    ({dbh_step_count,dbh_output_data_low,dbh_output_data_high}),
 
       .clk              (clk),
       .reset            (reset)
@@ -195,17 +197,17 @@ module ids
 	
 	always @(posedge clk) begin
 		if (reset) begin
-			dbh_data_high_out <= 0;
-			dbh_data_low_out <= 0;
+			dbh_output_data_high <= 0;
+			dbh_output_data_low <= 0;
 		end
 		else begin
-			dbh_data_high_out <= memory_data_high_out;
-			dbh_data_high_out <= memory_data_low_out;
+			dbh_output_data_high <= memory_output_data_high;
+			dbh_output_data_low <= memory_output_data_low;
 		end
 	end //always
 
-	always @(posedge cpu_clk) begin		
-		if (dbs_cmd[0] || dbs_cmd[8])begin
+	always @(posedge clk) begin		
+		if (dbs_cmd[0])begin
 			dbh_step_count <= 0;
 		end // if (ids_cmd[0])
 		else begin

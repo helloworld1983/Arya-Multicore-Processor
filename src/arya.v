@@ -38,7 +38,8 @@ module arya(
 	 input verify_mem,
     output [`DATAPATH_WIDTH-1:0] mem_data_out
     );
-wire [9:0] pc_out;
+
+wire [8:0] pc_out;
 pc_incrementor pc (
     .clk(clk), 
     .en(en), 
@@ -46,30 +47,33 @@ pc_incrementor pc (
     .pc_out(pc_out)
     );
 
+wire one = 1'b1;
+wire zero = 1'b0;
+wire [9:0] pc_out_extended = {zero, pc_out};
 wire enable_mem_debug;
 wire [`MEM_ADDR_WIDTH-1:0] wr_addr_in;
 assign enable_mem_debug = setup_mem || verify_mem;
-assign wr_addr_in = enable_mem_debug ? mem_addr_in : pc_out;
-wire [63:0]um_inst_out;
+assign wr_addr_in = enable_mem_debug ? mem_addr_in : pc_out_extended;
+wire [63:0] um_inst_out;
 wire [63:0] write_data;
 wire [63:0] em_R1out_out;
 wire [63:0] em_R2out_out;
 wire em_WMemEn_out;
-wire one = 0'b1;
 
-unified_memory memory (.addra(wr_addr_in), 	// input
-							  .dina(mem_data_in), 	// input
-							  .clka(clk), 				// input
-							  .wea(setup_mem),		// input
-                       .addrb({one,em_R1out_out[8:0]}), // input
-                       .dinb(em_R2out_out),  // input
-                       .clkb(clk), 				// input
-                       .web(em_WMemEn_out),  // input                   
-                       .douta(um_inst_out), 	// output
-                       .doutb(write_data)		// output
+dualport_mem1    memory (.addra(wr_addr_in), 	// input
+						.dina(mem_data_in), 	// input
+						.wea(setup_mem),		// input
+                        .douta(um_inst_out), 	// output
+                        .addrb({one,em_R1out_out[8:0]}), // input
+                        .dinb(em_R2out_out),  // input
+                        .clkb(clk), 				// input
+                        .clka(clk), 				// input
+                        .web(em_WMemEn_out),  // input                   
+                        .doutb(write_data)		// output
 							  );
 							  
 wire [63:0] fd_inst_out;
+assign mem_data_out = um_inst_out;
 
 pipe_fetch_decode fetch_decode (
     .inst_in(um_inst_out), 	// input
