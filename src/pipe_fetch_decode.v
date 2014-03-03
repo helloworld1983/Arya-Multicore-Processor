@@ -19,29 +19,29 @@
 //
 //////////////////////////////////////////////////////////////////////////////////
 
-`define INST_WIDTH 32
-`define REGFILE_ADDR 3
-`define DATAPATH_WIDTH 64
-`define MEM_ADDR_WIDTH 10
-`define INST_MEM_START 0
-`define DATA_MEM_START 512
 
-module pipe_fetch_decode(inst_in,clk,en,reset,inst_out);
-    input [`DATAPATH_WIDTH-1:0] inst_in;
-	 input clk;
-	 input en;
-	 input reset; 
-    output [`DATAPATH_WIDTH-1:0] inst_out;
-	 
-	 reg [`DATAPATH_WIDTH-1:0] inst_out;
+module pipe_fetch_decode
+   #(parameter DATAPATH_WIDTH = 64,
+	  parameter REGFILE_ADDR_WIDTH = 5,
+	  parameter INST_ADDR_WIDTH = 9)
+
+   (input [DATAPATH_WIDTH-1:0] inst_in,
+	 input clk,
+	 input en,
+	 input reset, 
+	 input [INST_ADDR_WIDTH-1:0] pc_in,
+    output reg [DATAPATH_WIDTH-1:0] inst_out,
+	 output reg [INST_ADDR_WIDTH-1:0] pc_out);
 	 
 always @ (posedge clk) 
   begin
 	 if (reset) begin
 		inst_out <= 'd0;
+		pc_out <= 'd0;
 	 end
 	 else if (en) begin
 		inst_out <= inst_in;
+		pc_out <= pc_in;
 	 end
   end
 endmodule

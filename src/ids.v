@@ -38,15 +38,12 @@
 `timescale 1ns/1ps
 // defines
 
-`define INST_WIDTH 32
-`define REGFILE_ADDR 3
-`define DATAPATH_WIDTH 64
-`define MEM_ADDR_WIDTH 10
-`define INST_MEM_START 0
-`define DATA_MEM_START 512
-`define NUM_COUNTERS 0
-`define NUM_SOFTWARE_REGS 4
-`define NUM_HARDWARE_REGS 3
+`define REGFILE_ADDR_WIDTH 	3
+`define MEM_ADDR_WIDTH 			10
+`define INST_ADDR_WIDTH 		9
+`define NUM_COUNTERS 			0
+`define NUM_SOFTWARE_REGS 		4
+`define NUM_HARDWARE_REGS 		3
 
 module ids 
    #(
@@ -103,16 +100,16 @@ module ids
    wire [31:0]                   dbs_cmd;
    wire [31:0]                   dbs_input_data_high;
    wire [31:0]                   dbs_input_data_low;
-	wire [31:0]				     dbs_input_addr;
+	wire [31:0]				     		dbs_input_addr;
    // hardware registers
 	reg [31:0]                    dbh_output_data_high;
-	reg [31:0]					  dbh_output_data_low;
-	reg [31:0]					  dbh_step_count;
+	reg [31:0]					  		dbh_output_data_low;
+	reg [31:0]					  		dbh_step_count;
 
    // internal state
    reg [1:0]                     state, state_next;
    reg [2:0]                     header_counter, header_counter_next;
-   reg [63:0]					 out_data_next, out_ctrl_next;
+   reg [63:0]					 		out_data_next, out_ctrl_next;
    // local parameter
    parameter                     START = 2'b00;
    parameter                     HEADER = 2'b01;
@@ -144,12 +141,19 @@ module ids
 	wire [31:0] memory_output_data_high;
 	wire [31:0] memory_output_data_low;
 	
-	arya core1 (
-	.mem_addr_in				(dbs_input_addr[9:0]), // Address of memory written by software regs
+	wire cpu_en = 1'b1;
+	
+	arya #(
+	.INST_ADDR_WIDTH			(`INST_ADDR_WIDTH),
+	.DATAPATH_WIDTH			(DATA_WIDTH),
+	.MEM_ADDR_WIDTH			(`MEM_ADDR_WIDTH),
+	.REGFILE_ADDR_WIDTH		(`REGFILE_ADDR_WIDTH)
+	) core_1(
+	.mem_addr_in				(dbs_input_addr[`MEM_ADDR_WIDTH-1:0]), // Address of memory written by software regs
 	.mem_data_in				({dbs_input_data_high, dbs_input_data_low}), // Data of memory written by software regs
 	.mem_data_out				({memory_output_data_high, memory_output_data_low}),
-	.clk						(clk),
-	.en							(1),			// Forcing it to be one.
+	.clk							(clk),
+	.en							(cpu_en),			// Forcing it to be one.
 	.reset						(dbs_cmd[0]),
 	.setup_mem					(dbs_cmd[1]),
 	.verify_mem					(dbs_cmd[2])

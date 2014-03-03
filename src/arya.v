@@ -18,166 +18,224 @@
 // Additional Comments: 
 //
 //////////////////////////////////////////////////////////////////////////////////
-`define INST_WIDTH 32
-`define REGFILE_ADDR 3
-`define DATAPATH_WIDTH 64
-`define MEM_ADDR_WIDTH 10
-`define INST_MEM_START 0
-`define DATA_MEM_START 512
-`define NUM_COUNTERS 0
-`define NUM_SOFTWARE_REGS 4
-`define NUM_HARDWARE_REGS 3
 
-module arya(
-    input clk,
-    input reset,
-	 input en,
-    input [`MEM_ADDR_WIDTH-1:0] mem_addr_in,
-    input [`DATAPATH_WIDTH-1:0] mem_data_in,
-    input setup_mem,
-	 input verify_mem,
-    output [`DATAPATH_WIDTH-1:0] mem_data_out
+module arya #(
+	parameter 	REGFILE_ADDR_WIDTH 	= 5,
+	parameter 	DATAPATH_WIDTH	 		= 64,
+	parameter 	MEM_ADDR_WIDTH			= 10,
+	parameter 	INST_ADDR_WIDTH		= 9
+	)
+(
+    input 		clk,
+    input 		reset,
+	 input 		en,
+    input 		[MEM_ADDR_WIDTH-1:0] mem_addr_in,
+    input 		[DATAPATH_WIDTH-1:0] mem_data_in,
+    input 		setup_mem,
+	 input 		verify_mem,
+    output 		[DATAPATH_WIDTH-1:0] mem_data_out
     );
 
-wire [8:0] pc_out;
-pc_incrementor pc (
-    .clk(clk), 
-    .en(en), 
-    .reset(reset), 
-    .pc_out(pc_out)
-    );
-
+wire [INST_ADDR_WIDTH-1:0] pc_out;
 wire one = 1'b1;
 wire zero = 1'b0;
-wire [9:0] pc_out_extended = {zero, pc_out};
-wire enable_mem_debug;
-wire [`MEM_ADDR_WIDTH-1:0] wr_addr_in;
-assign enable_mem_debug = setup_mem || verify_mem;
-assign wr_addr_in = enable_mem_debug ? mem_addr_in : pc_out_extended;
-wire [63:0] um_inst_out;
-wire [63:0] write_data;
-wire [63:0] em_R1out_out;
-wire [63:0] em_R2out_out;
-wire em_WMemEn_out;
 
-dualport_mem1    memory (.addra(wr_addr_in), 	// input
-						.dina(mem_data_in), 	// input
-						.wea(setup_mem),		// input
-                        .douta(um_inst_out), 	// output
-                        .addrb({one,em_R1out_out[8:0]}), // input
-                        .dinb(em_R2out_out),  // input
-                        .clkb(clk), 				// input
-                        .clka(clk), 				// input
-                        .web(em_WMemEn_out),  // input                   
-                        .doutb(write_data)		// output
-							  );
+pc_incrementor #(
+			.INST_ADDR_WIDTH	(INST_ADDR_WIDTH)
+	) pc (
+		.clk			(clk), 
+		.en			(en), 
+		.reset		(reset), 
+		.pc_out		(pc_out)
+			);
+
+
+wire [MEM_ADDR_WIDTH:0] pc_out_extended = {zero, pc_out};
+wire enable_mem_debug;
+
+wire 	[MEM_ADDR_WIDTH-1:0] porta_addr_in;
+wire 	[DATAPATH_WIDTH-1:0]	porta_data_in;
+wire	porta_we_in;
+wire 	[DATAPATH_WIDTH-1:0]	porta_data_out;
+
+wire 	[MEM_ADDR_WIDTH-1:0]	portb_addr_in;
+wire 	[DATAPATH_WIDTH-1:0]	portb_data_in;
+wire 	portb_we_in;
+wire	[DATAPATH_WIDTH-1:0]	portb_data_out;
+
+assign enable_mem_debug = setup_mem || verify_mem;
+assign porta_addr_in = enable_mem_debug ? mem_addr_in : pc_out_extended;
+
+dualport_mem1 memory (
+		.addra			(porta_addr_in), 	// input
+		.dina				(porta_data_in), 	// input
+		.wea				(porta_we_in),		// input
+		.douta			(porta_data_out), 	// output
+		.addrb			(portb_addr_in), // input
+		.dinb				(portb_data_in),  // input
+		.web				(portb_we_in),  // input                   
+		.doutb			(portb_data_out),		// output
+		.clka				(clk), 				// input
+		.clkb				(clk) 				// input
+		 );
 							  
-wire [63:0] fd_inst_out;
-assign mem_data_out = um_inst_out;
+wire 	[DATAPATH_WIDTH-1:0] 	pipe_fd_inst_in;
+wire 	[DATAPATH_WIDTH-1:0] 	pipe_fd_inst_out;
+wire 	[INST_ADDR_WIDTH-1:0]	pipe_fd_pc_in;
 
 pipe_fetch_decode fetch_decode (
-    .inst_in(um_inst_out), 	// input
-    .clk(clk), 					// input
-    .en(en), 						// input
-    .reset(reset), 				// input
-    .inst_out(fd_inst_out)		// output
-    );
+		.inst_in			(pipe_fd_inst_in), 	// input
+		.pc_in			(fd_pc_in),
+		.inst_out		(pipe_fd_inst_out),		// output
+		.clk				(clk), 					// input
+		.en				(en), 						// input
+		.reset			(reset) 				// input
+		);
 
+wire 	[DATAPATH_WIDTH-1:0]			decoder_inst_in;
+wire 	[REGFILE_ADDR_WIDTH-1:0]	decoder_R1_addr_out;
+wire 	[REGFILE_ADDR_WIDTH-1:0]	decoder_R2_addr_out;
+wire 	[REGFILE_ADDR_WIDTH-1:0]	decoder_WR_addr_out;
+wire 	[INST_ADDR_WIDTH-1:0]		decoder_pc_out;	
+wire 	[INST_ADDR_WIDTH-1:0]		decoder_pc_in;
 	
-wire 	[2:0]  d_r0addr_out;
-wire 	[2:0]  d_r1addr_out;
-wire 	d_WRegEn_out;
-wire 	d_WMemEn_out;
-wire 	[2:0]	d_WReg1_out;
-
-
-inst_decoder decoder (
-    .clk(clk), 
-    .reset(reset), 
-    .en(en), 
-    .inst_in(fd_inst_out), 		// input
-    .r0addr_out(d_r0addr_out), 	// output
-    .r1addr_out(d_r1addr_out), 	// output
-    .WRegEn_out(d_WRegEn_out), 	// output
-    .WMemEn_out(d_WMemEn_out), 	// output
-    .WReg1_out(d_WReg1_out) 		// output
-    );
+inst_decoder #(
+		.DATAPATH_WIDTH		(DATAPATH_WIDTH),
+		.REGFILE_ADDR_WIDTH	(REGFILE_ADDR_WIDTH),
+		.INST_ADDR_WIDTH		(INST_ADDR_WIDTH)
+)decoder (
+		.inst_in			(decoder_inst_in), 		// input
+		.pc_in			(decoder_pc_in),
+		.R1_addr_out	(decoder_R1_addr_out), 	// output
+		.R2_addr_out	(decoder_R2_addr_out), 	// output
+		.WR_addr_out	(decoder_WR_addr_out),
+		.pc_out			(decoder_pc_out),
+		.clk				(clk), 
+		.reset			(reset), 
+		.en				(en)
+		);
 		 
-wire [63:0] r0data;
-wire [63:0] r1data;
+wire 	[MEM_ADDR_WIDTH-1:0]		rf_R1_addr_in;	
+wire 	[DATAPATH_WIDTH-1:0]		rf_R1_data_out;
+wire 	[MEM_ADDR_WIDTH-1:0]		rf_R2_addr_in;
+wire 	[DATAPATH_WIDTH-1:0]		rf_R2_data_out;
+wire 	[MEM_ADDR_WIDTH-1:0]		rf_WR_addr_in;
+wire 	[DATAPATH_WIDTH-1:0]		rf_WR_data_in;
+wire 	rf_wena;
 
-wire [2:0] mw_WReg1_out;
-wire [63:0] mw_Mem_data_out;
-wire mw_WRegEn_out;
+regfile #(
+		.DATAPATH_WIDTH		(DATAPATH_WIDTH),
+		.REGFILE_ADDR_WIDTH	(REGFILE_ADDR_WIDTH)
+)rf (
 
-
-regfile rf (
-    .r0addr(d_r0addr_out), 		// input
-    .r1addr(d_r1addr_out), 		// input
-    .waddr(mw_WReg1_out), 			// input
-    .wdata(mw_Mem_data_out), 		// input
-    .r0data(r0data), 				// output
-    .r1data(r1data), 				// output
-    .wena(mw_WRegEn_out), 			// input
-    .clk(clk), 						// input
-    .reset(reset)						// input
-    );
+		.R1_addr_in		(rf_R1_addr_in), 		// input
+		.R1_data_out	(rf_R1_data_out), 	// output
+		.R2_addr_in		(rf_R2_addr_in), 		// input
+		.R2_data_out	(rf_R2_data_out), 	// output
+		.WR_addr_in		(rf_WR_addr_in), 		// input
+		.WR_data_in		(rf_WR_data_in), 		// input
+		.wena				(rf_wena), 				// input
+		.clk				(clk), 					// input
+		.reset			(reset)					// input
+		);
 	
-wire de_WregEn_out;
-wire de_WMemEn_out;
-wire [63:0]	de_R1out_out;
-wire [63:0]	de_R2out_out;
-wire [2:0] 	de_WReg1_out;
+	
+wire 	[INST_ADDR_WIDTH-1:0]		pipe_de_pc_in;
+wire	[DATAPATH_WIDTH-1:0]			pipe_de_R1_data_in;	
+wire	[DATAPATH_WIDTH-1:0]			pipe_de_R2_data_in;
+wire	[REGFILE_ADDR_WIDTH-1:0]	pipe_de_R1_addr_in;
+wire	[REGFILE_ADDR_WIDTH-1:0]	pipe_de_R2_addr_in;
+wire	[REGFILE_ADDR_WIDTH-1:0]	pipe_de_WR_addr_in;
 
-pipe_decode_execute decode_execute (
-    .WRegEn_in(d_WRegEn_out), 	// input
-    .WMemEn_in(d_WMemEn_out), 
-    .R1out_in(r0data), 
-    .R2out_in(r1data), 
-    .WReg1_in(d_WReg1_out), 
-    .clk(clk), 
-    .en(en), 
-    .reset(reset), 
-    .WRegEn_out(de_WRegEn_out), // output
-    .WMemEn_out(de_WMemEn_out), 
-    .R1out_out(de_R1out_out), 
-    .R2out_out(de_R2out_out), 
-    .WReg1_out(de_WReg1_out)
+wire 	[INST_ADDR_WIDTH-1:0]		pipe_de_pc_out;
+wire	[DATAPATH_WIDTH-1:0]			pipe_de_R1_data_out;	
+wire	[DATAPATH_WIDTH-1:0]			pipe_de_R2_data_out;
+wire	[REGFILE_ADDR_WIDTH-1:0]	pipe_de_R1_addr_out;
+wire	[REGFILE_ADDR_WIDTH-1:0]	pipe_de_R2_addr_out;
+wire	[REGFILE_ADDR_WIDTH-1:0]	pipe_de_WR_addr_out;
+
+pipe_decode_execute #(
+		.DATAPATH_WIDTH		(DATAPATH_WIDTH),
+		.REGFILE_ADDR_WIDTH	(REGFILE_ADDR_WIDTH),
+		.INST_ADDR_WIDTH		(INST_ADDR_WIDTH)
+)decode_execute (
+		// input ports
+		.pc_in			(pipe_de_pc_in),
+		.R1_data_in		(pipe_de_R1_data_in),
+		.R2_data_in		(pipe_de_R2_data_in),
+		.R1_addr_in		(pipe_de_R1_addr_in),
+		.R2_addr_in		(pipe_de_R2_addr_in),
+		.WR_addr_in		(pipe_de_WR_addr_in),
+		
+		// output ports
+		.pc_out			(pipe_de_pc_out),
+		.R1_data_out	(pipe_de_R1_data_out),
+		.R2_data_out	(pipe_de_R2_data_out),
+		.R1_addr_out	(pipe_de_R1_addr_out),
+		.R2_addr_out	(pipe_de_R2_addr_out),
+		.WR_addr_out	(pipe_de_WR_addr_out),
+
+		.clk(clk), 
+		.en(en), 
+		.reset(reset)
     );
  
  
-wire em_WRegEn_out ;
-wire [2:0]	em_WReg1_out;
-pipe_execute_mem execute_mem (
-    .WRegEn_in(de_WRegEn_out), 
-    .WMemEn_in(de_WMemEn_out), 
-    .R1out_in(de_R1out_out), 
-    .R2out_in(de_R2out_out), 
-    .WReg1_in(de_WReg1_out), 
-    .clk(clk), 
-    .en(en), 
-    .reset(reset), 
-    .WRegEn_out(em_WRegEn_out), 
-    .WMemEn_out(em_WMemEn_out), 
-    .R1out_out(em_R1out_out), 
-    .R2out_out(em_R2out_out), 
-    .WReg1_out(em_WReg1_out)
+wire 	[INST_ADDR_WIDTH-1:0]		pipe_em_pc_in;
+wire 	[DATAPATH_WIDTH-1:0]			pipe_em_accum_in;
+wire 	[DATAPATH_WIDTH-1:0]			pipe_em_store_data_in;
+wire 	[REGFILE_ADDR_WIDTH-1:0]	pipe_em_WR_addr_in;
+
+wire 	[INST_ADDR_WIDTH-1:0]		pipe_em_pc_out;
+wire 	[DATAPATH_WIDTH-1:0]			pipe_em_accum_out;
+wire 	[DATAPATH_WIDTH-1:0]			pipe_em_store_data_out;
+wire 	[REGFILE_ADDR_WIDTH-1:0]	pipe_em_WR_addr_out;
+
+
+pipe_execute_mem #(
+		.DATAPATH_WIDTH		(DATAPATH_WIDTH),
+		.REGFILE_ADDR_WIDTH	(REGFILE_ADDR_WIDTH),
+		.INST_ADDR_WIDTH		(INST_ADDR_WIDTH)
+)execute_mem (
+		.pc_in			(pipe_em_pc_in),
+		.accum_in		(pipe_em_accum_in),
+		.store_data_in	(pipe_em_store_data_in),
+		.WR_addr_in		(pipe_em_WR_addr_in),
+		
+		.pc_out			(pipe_em_pc_out),
+		.accum_out		(pipe_em_accum_out),
+		.store_data_out(pipe_em_store_data_out),
+		.WR_addr_out	(pipe_em_WR_addr_out),
+		
+		.clk				(clk), 
+		.en				(en), 
+		.reset			(reset)
     );
 
-pipe_mem_wb mem_wb (
-    .WRegEn_in(em_WRegEn_out), 		// input
-    .Mem_data_in(write_data), 
-    .WReg1_in(em_WReg1_out), 
-    .clk(clk), 
-    .en(en), 
-    .reset(reset), 
-    .WReg1_out(mw_WReg1_out), 		// output
-    .WRegEn_out(mw_WRegEn_out), 
-    .Mem_data_out(mw_Mem_data_out)
+wire 	[DATAPATH_WIDTH-1:0]			pipe_wb_mem_data_in;
+wire 	[DATAPATH_WIDTH-1:0]			pipe_wb_accum_in;
+wire 	[REGFILE_ADDR_WIDTH-1:0]	pipe_wb_WR_addr_in;
+
+wire 	[DATAPATH_WIDTH-1:0]			pipe_wb_mem_data_out;
+wire 	[DATAPATH_WIDTH-1:0]			pipe_wb_accum_out;
+wire 	[REGFILE_ADDR_WIDTH-1:0]	pipe_wb_WR_addr_out;
+
+
+pipe_mem_wb #(
+		.DATAPATH_WIDTH		(DATAPATH_WIDTH),
+		.REGFILE_ADDR_WIDTH	(REGFILE_ADDR_WIDTH)
+)mem_wb (
+		.mem_data_in	(pipe_mw_mem_data_in),
+		.accum_in		(pipe_mw_accum_in),
+		.WR_addr_in		(pipe_mw_WR_addr_in),
+		
+		.mem_data_out	(pipe_mw_mem_data_out),
+		.accum_out		(pipe_mw_accum_out),
+		.WR_addr_out	(pipe_mw_WR_addr_out),
+		
+		.clk				(clk), 
+		.en				(en), 
+		.reset			(reset)
     );
-
-
-
-
-
+	 
 endmodule
