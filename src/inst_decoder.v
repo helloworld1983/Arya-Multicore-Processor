@@ -25,34 +25,41 @@ module inst_decoder
 	  parameter REGFILE_ADDR_WIDTH = 5,
 	  parameter INST_ADDR_WIDTH = 9)
 
-	(input clk,
-	 input reset,
-	 input en,
-    input [DATAPATH_WIDTH-1:0] inst_in,
+	(input [DATAPATH_WIDTH-1:0] inst_in,
 	 input [INST_ADDR_WIDTH-1:0] pc_in,
-    output reg [REGFILE_ADDR_WIDTH-1:0] R1_addr_out,
-    output reg [REGFILE_ADDR_WIDTH-1:0] R2_addr_out,
-	 output reg [REGFILE_ADDR_WIDTH-1:0] WR_addr_out,
-	 output reg [INST_ADDR_WIDTH-1:0] pc_out);
-//    output WRegEn_out;
-//    output WMemEn_out;
-//    output [REGFILE_ADDR_WIDTH-1:0] WReg1_out;
+    output [REGFILE_ADDR_WIDTH-1:0] R1_addr_out,
+    output [REGFILE_ADDR_WIDTH-1:0] R2_addr_out,
+	 output [REGFILE_ADDR_WIDTH-1:0] WR_addr_out,
+	 output reg WR_en_out,
+	 output [INST_ADDR_WIDTH-1:0] pc_out,
+	 output reg [3:0] alu_ctrl_out);
 	 
-always @ (posedge clk)
-   begin
-//		if (reset) begin
-//    		r0addr_out <= 'd0;
-//			r1addr_out <= 'd0;
-//			WRegEn_out <= 'd0;
-//			WMemEn_out <= 'd0;
-//			WReg1_out <= 'd0;
-//		end
-//		else if (en) begin
-//			WMemEn_out <= inst_in[15];
-//			WRegEn_out <= inst_in[14];
-//			r0addr_out <= inst_in[13:11];
-//			r1addr_out <= inst_in[10:8];
-//			WReg1_out <= inst_in[7:5];
-//		end
+wire [5:0] opcode;
+wire [5:0] alu_func;
+
+assign opcode = inst_in[31:26];
+assign alu_func = inst_in[5:0];
+assign R1_addr_out 	= inst_in[25:21];
+assign R2_addr_out 	= inst_in[20:16];
+assign WR_addr_out 	= inst_in[15:11];
+assign pc_out 			= pc_in;
+
+always @(*)begin
+	if (opcode == 6'b000000) begin
+		case (alu_func)
+		'b000000:	begin
+						WR_en_out		= 0;
+						alu_ctrl_out	= 0;
+						end
+		'b100000:	begin
+						WR_en_out		= 1;
+						alu_ctrl_out	= 0;
+						end
+		default: 	begin
+						WR_en_out		= 0;
+						alu_ctrl_out	= 0;
+						end
+		endcase
 	end
+end //always
 endmodule

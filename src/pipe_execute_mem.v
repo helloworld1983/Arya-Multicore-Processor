@@ -32,24 +32,29 @@ module pipe_execute_mem
     input clk,
     input en,
 	 input reset,
+	 input WR_en_in,
+	 
     output reg [INST_ADDR_WIDTH-1:0] pc_out,
     output reg [DATAPATH_WIDTH-1:0] accum_out,
     output reg [DATAPATH_WIDTH-1:0] store_data_out,
-    output reg [REGFILE_ADDR_WIDTH-1:0] WR_addr_out);
+    output reg [REGFILE_ADDR_WIDTH-1:0] WR_addr_out,
+	 output reg WR_en_out);
 	 
 always @ (posedge clk) 
   begin
 	 if (reset) begin
-		pc_out <= 'd0;
-		accum_out <= 'd0;
+		pc_out 			<= 'd0;
+		accum_out 		<= 'd0;
 		store_data_out <= 'd0;
-		WR_addr_out <= 'd0;
+		WR_addr_out 	<= 'd0;
+		WR_en_out		<= 'd0;
 	 end
 	 else if (en) begin
-		pc_out <= pc_in;
-		accum_out <= accum_in;
+		pc_out 			<= pc_in;
+		accum_out 		<= accum_in;
 		store_data_out <= store_data_in;
-		WR_addr_out <= WR_addr_in;
+		WR_addr_out 	<= WR_addr_in;
+		WR_en_out		<= WR_en_in;
 	 end
 	end	 
 endmodule

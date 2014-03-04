@@ -56,7 +56,7 @@ integer i;
 always @(posedge clk) begin
 	if (reset) begin
 			for(i = 0; i < (2 ** REGFILE_ADDR_WIDTH); i = i + 1) begin
-				regfile[i] <= 'd0;
+				regfile[i] <= 'd2; //  HACK - MAKE THIS ZERO IF NOT!!!!!
 			end
    end 
   else begin
