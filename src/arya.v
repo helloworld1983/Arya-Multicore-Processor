@@ -73,7 +73,9 @@ wire 	[REGFILE_ADDR_WIDTH-1:0]	decoder_WR_addr_out;
 wire 	[INST_ADDR_WIDTH-1:0]		decoder_pc_out;	
 wire 	[INST_ADDR_WIDTH-1:0]		decoder_pc_in;
 wire 										decoder_WR_en_out;
-wire 	[3:0]									decoder_alu_ctrl_out;
+wire 	[3:0]								decoder_alu_ctrl_out;
+wire 										decoder_shift_sel_out;
+wire 										decoder_imm_sel_out;
 
 //////////////////////////////////////// wires register_file /////////////////////////////////// 
 		 
@@ -207,7 +209,10 @@ inst_decoder #(
 		.WR_addr_out	(decoder_WR_addr_out),
 		.WR_en_out		(decoder_WR_en_out),
 		.pc_out			(decoder_pc_out),
-		.alu_ctrl_out	(decoder_alu_ctrl_out)
+		.alu_ctrl_out	(decoder_alu_ctrl_out),
+		.imm_out			(decoder_imm_out),
+		.imm_sel_out	(decoder_imm_sel_out),
+		.shift_sel_out	(decoder_shift_sel_out)
 		);
 
 //////////////////////////////////////// assigns ///////////////////////////////////
@@ -240,7 +245,11 @@ regfile #(
 assign pipe_de_WR_en_in 	= decoder_WR_en_out;
 assign pipe_de_WR_addr_in 	= decoder_WR_addr_out;
 assign pipe_de_R1_data_in	= rf_R1_data_out;
-assign pipe_de_R2_data_in	= rf_R2_data_out;
+
+wire [DATAPATH_WIDTH-1:0]	shift_mux_in;
+
+assign shift_mux_in	= decoder_imm_sel_out ? decoder_imm_out : rf_R2_data_out;
+assign pipe_de_R2_data_in = decoder_shift_sel_out ? {59'd0,shift_mux_in[10:6]} : shift_mux_in;
 assign pipe_de_alu_ctrl_in	= decoder_alu_ctrl_out;
 /////////////////////////////// module instantiation //////////////////////////////////
 

@@ -28,13 +28,18 @@ module alu # (
     );
 
 
+wire shift_value = b_in[5:0];
+
 always @(*) begin
 	case (alu_ctrl_in)
-	'd0:accum_out 		= a_in + b_in;
-	'd1:accum_out 		= a_in - b_in;
-	'd2:accum_out		= a_in & b_in;
-	'd3:accum_out		= a_in | b_in;
-	'd4:accum_out		= a_in ^ b_in;
+	'd0:accum_out 		= a_in + b_in; // ADD
+	'd1:accum_out 		= a_in - b_in; // SUB
+	'd2:accum_out		= a_in & b_in; // AND
+	'd3:accum_out		= a_in | b_in; // OR
+	'd4:accum_out		= ~a_in;			// NOT
+	'd5:accum_out		= a_in ^ b_in;	// EXOR
+	'd6:accum_out		= a_in << shift_value;	// SLL
+	'd7:accum_out		= a_in >> shift_value;	// SLL
 	default:accum_out = 'd0;
 	endcase
 end
