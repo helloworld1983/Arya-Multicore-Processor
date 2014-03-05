@@ -36,14 +36,17 @@ module arya #(
     output 		[DATAPATH_WIDTH-1:0] mem_data_out
     );
 	 
-	 
+wire one ;
+wire zero;
+
+assign zero = 0;
+assign one = 1;
 /////////////////////////////////////// wires pc_incrementor //////////////////////////////////////
 
 wire [INST_ADDR_WIDTH-1:0] 						pc_out;
-wire one 											= 1'b1;
-wire zero 											= 1'b0;
-wire [MEM_ADDR_WIDTH:0] pc_out_extended 	= {zero, pc_out};
-wire 														enable_mem_debug;
+wire [MEM_ADDR_WIDTH-1:0] pc_out_extended 	= {zero, pc_out};
+wire  													branch_true;
+wire  [INST_ADDR_WIDTH-1:0]						pc_in;
 
 //////////////////////////////////////// wires dualport_mem1 ///////////////////////////////////
 
@@ -59,23 +62,28 @@ wire	[DATAPATH_WIDTH-1:0]	portb_data_out;
 
 //////////////////////////////////////// wires pipe_fetch_decode ///////////////////////////////////
 							  
-wire 	[DATAPATH_WIDTH-1:0] 	pipe_fd_inst_in;
-wire 	[DATAPATH_WIDTH-1:0] 	pipe_fd_inst_out;
+wire 	[31:0] 	pipe_fd_inst_in;
+wire 	[31:0] 	pipe_fd_inst_out;
 wire 	[INST_ADDR_WIDTH-1:0]	pipe_fd_pc_in;
 wire	[INST_ADDR_WIDTH-1:0]	pipe_fd_pc_out;
 
 //////////////////////////////////////// wires decoder ///////////////////////////////////
 
-wire 	[DATAPATH_WIDTH-1:0]			decoder_inst_in;
+wire 	[31:0]			decoder_inst_in;
 wire 	[REGFILE_ADDR_WIDTH-1:0]	decoder_R1_addr_out;
 wire 	[REGFILE_ADDR_WIDTH-1:0]	decoder_R2_addr_out;
 wire 	[REGFILE_ADDR_WIDTH-1:0]	decoder_WR_addr_out;
-wire 	[INST_ADDR_WIDTH-1:0]		decoder_pc_out;	
-wire 	[INST_ADDR_WIDTH-1:0]		decoder_pc_in;
-wire 										decoder_WR_en_out;
+
 wire 	[3:0]								decoder_alu_ctrl_out;
-wire 										decoder_shift_sel_out;
+wire	[INST_ADDR_WIDTH-1:0]		decoder_branch_offset_out;
+wire	[15:0]							decoder_imm_out;
+
+wire 										decoder_WR_en_out;
+wire 										decoder_mem_reg_sel_out;
 wire 										decoder_imm_sel_out;
+wire 										decoder_beq_out;
+wire 										decoder_bneq_out;
+wire 										decoder_mem_write_out;
 
 //////////////////////////////////////// wires register_file /////////////////////////////////// 
 		 
@@ -85,49 +93,69 @@ wire 	[REGFILE_ADDR_WIDTH-1:0]	rf_R2_addr_in;
 wire 	[DATAPATH_WIDTH-1:0]			rf_R2_data_out;
 wire 	[REGFILE_ADDR_WIDTH-1:0]	rf_WR_addr_in;
 wire 	[DATAPATH_WIDTH-1:0]			rf_WR_data_in;
-wire 	rf_wena;
+wire 	rf_wena_in;
 
 //////////////////////////////////////// wires pipe_decode_execute /////////////////////////////////// 
 	
 wire 	[INST_ADDR_WIDTH-1:0]		pipe_de_pc_in;
 wire	[DATAPATH_WIDTH-1:0]			pipe_de_R1_data_in;	
 wire	[DATAPATH_WIDTH-1:0]			pipe_de_R2_data_in;
-wire	[REGFILE_ADDR_WIDTH-1:0]	pipe_de_R1_addr_in;
-wire	[REGFILE_ADDR_WIDTH-1:0]	pipe_de_R2_addr_in;
 wire	[REGFILE_ADDR_WIDTH-1:0]	pipe_de_WR_addr_in;
-wire										pipe_de_WR_en_in;
 wire [3:0]								pipe_de_alu_ctrl_in;
+wire [INST_ADDR_WIDTH-1:0]			pipe_de_branch_offset_in;
+
+wire										pipe_de_WR_en_in;
+wire 										pipe_de_mem_reg_sel_in;
+wire 										pipe_de_beq_in;
+wire										pipe_de_bneq_in;
+wire 										pipe_de_mem_write_in;
 
 wire 	[INST_ADDR_WIDTH-1:0]		pipe_de_pc_out;
 wire	[DATAPATH_WIDTH-1:0]			pipe_de_R1_data_out;	
 wire	[DATAPATH_WIDTH-1:0]			pipe_de_R2_data_out;
-wire	[REGFILE_ADDR_WIDTH-1:0]	pipe_de_R1_addr_out;
-wire	[REGFILE_ADDR_WIDTH-1:0]	pipe_de_R2_addr_out;
 wire	[REGFILE_ADDR_WIDTH-1:0]	pipe_de_WR_addr_out;
-wire										pipe_de_WR_en_out;
 wire [3:0]								pipe_de_alu_ctrl_out;
+wire [INST_ADDR_WIDTH-1:0]			pipe_de_branch_offset_out;
 
+wire										pipe_de_WR_en_out;
+wire 										pipe_de_mem_reg_sel_out;
+wire 										pipe_de_beq_out;
+wire										pipe_de_bneq_out;
+wire 										pipe_de_mem_write_out;
 //////////////////////////////////////// wires alu /////////////////////////////////// 
 
 wire	[DATAPATH_WIDTH-1:0]			alu_accum_out;
 wire 	[DATAPATH_WIDTH-1:0]			alu_a_in;	
 wire 	[DATAPATH_WIDTH-1:0]			alu_b_in;
 wire	[3:0]								alu_ctrl_in;
-		
-
+wire 										alu_zero_out;							
+//////////////////////////////////////// wires branch_adder /////////////////////////////////// 
+wire [INST_ADDR_WIDTH-1:0]			badd_pc_in;
+wire [INST_ADDR_WIDTH-1:0]			badd_branch_offset_in;
+wire [INST_ADDR_WIDTH-1:0]			badd_branch_target_out;
 //////////////////////////////////////// wires pipe execute memory /////////////////////////////////// 
 
-wire 	[INST_ADDR_WIDTH-1:0]		pipe_em_pc_in;
+wire 	[INST_ADDR_WIDTH-1:0]		pipe_em_branch_target_in;
 wire 	[DATAPATH_WIDTH-1:0]			pipe_em_accum_in;
 wire 	[DATAPATH_WIDTH-1:0]			pipe_em_store_data_in;
 wire 	[REGFILE_ADDR_WIDTH-1:0]	pipe_em_WR_addr_in;
 wire										pipe_em_WR_en_in;
+wire 										pipe_em_mem_reg_sel_in;
+wire 										pipe_em_beq_in;
+wire										pipe_em_bneq_in;
+wire										pipe_em_zero_in;
+wire 										pipe_em_mem_write_in;
 
-wire 	[INST_ADDR_WIDTH-1:0]		pipe_em_pc_out;
+wire 	[INST_ADDR_WIDTH-1:0]		pipe_em_branch_target_out;
 wire 	[DATAPATH_WIDTH-1:0]			pipe_em_accum_out;
 wire 	[DATAPATH_WIDTH-1:0]			pipe_em_store_data_out;
 wire 	[REGFILE_ADDR_WIDTH-1:0]	pipe_em_WR_addr_out;
 wire										pipe_em_WR_en_out;
+wire 										pipe_em_mem_reg_sel_out;
+wire 										pipe_em_beq_out;
+wire										pipe_em_bneq_out;
+wire 										pipe_em_zero_out;
+wire 										pipe_em_mem_write_out;
 
 //////////////////////////////////////// wires pipe memory wb /////////////////////////////////// 
 
@@ -135,28 +163,40 @@ wire 	[DATAPATH_WIDTH-1:0]			pipe_mw_mem_data_in;
 wire 	[DATAPATH_WIDTH-1:0]			pipe_mw_accum_in;
 wire 	[REGFILE_ADDR_WIDTH-1:0]	pipe_mw_WR_addr_in;
 wire 										pipe_mw_WR_en_in;
+wire 										pipe_mw_mem_reg_sel_in;
 
 
 wire 	[DATAPATH_WIDTH-1:0]			pipe_mw_mem_data_out;
 wire 	[DATAPATH_WIDTH-1:0]			pipe_mw_accum_out;
 wire 	[REGFILE_ADDR_WIDTH-1:0]	pipe_mw_WR_addr_out;
 wire 										pipe_mw_WR_en_out;
+wire 										pipe_mw_mem_reg_sel_out;
 
+
+
+////// temp wires////
+
+wire beq_taken, bneq_taken;
+/////////////////////
 /////////////////////////////// module instantiation //////////////////////////////////
 
 pc_incrementor #(
 			.INST_ADDR_WIDTH	(INST_ADDR_WIDTH)
 	) pc (
 		.clk			(clk), 
-		.en			(en), 
-		.reset		(reset), 
+		.en			(en),
+		.wen			(branch_true),
+		.reset		(reset),
+		.pc_in		(pc_in),		
 		.pc_out		(pc_out)
 			);
 
 //////////////////////////////////////// assigns ///////////////////////////////////
 
-assign porta_addr_in = pc_out;
-
+//porta
+assign porta_addr_in 	= pc_out_extended;
+assign porta_data_in		= 'd0;
+assign porta_we_in		= 0;
 /////////////////////////////// module instantiation //////////////////////////////////
 
 dualport_mem1 memory (
@@ -174,27 +214,25 @@ dualport_mem1 memory (
 		 );
 		 
 //////////////////////////////////////// assigns ///////////////////////////////////
-
-assign pipe_fd_inst_in = porta_data_out;
-assign pipe_fd_pc_in = pc_out;
-
+assign pipe_fd_inst_in 	= porta_data_out;
+assign pipe_fd_pc_in 	= pc_out;
 /////////////////////////////// module instantiation //////////////////////////////////
 
 pipe_fetch_decode fetch_decode (
 		.inst_in			(pipe_fd_inst_in), 	// input
 		.pc_in			(pipe_fd_pc_in),
+		
+		//outputs
 		.inst_out		(pipe_fd_inst_out),		// output
 		.pc_out   	 	(pipe_fd_pc_out),
+		
 		.clk				(clk), 					// input
 		.en				(en), 						// input
 		.reset			(reset) 				// input
 		);
 
-//////////////////////////////////////// assigns ///////////////////////////////////
-
+//////////////////////////////////////// decoder assigns ///////////////////////////////////
 assign decoder_inst_in = pipe_fd_inst_out;
-assign decoder_pc_in = pipe_fd_pc_out;
-
 /////////////////////////////// module instantiation //////////////////////////////////
 
 inst_decoder #(
@@ -203,25 +241,23 @@ inst_decoder #(
 		.INST_ADDR_WIDTH		(INST_ADDR_WIDTH)
 )decoder (
 		.inst_in			(decoder_inst_in), 		// input
-		.pc_in			(decoder_pc_in),
+		
 		.R1_addr_out	(decoder_R1_addr_out), 	// output
 		.R2_addr_out	(decoder_R2_addr_out), 	// output
 		.WR_addr_out	(decoder_WR_addr_out),
-		.WR_en_out		(decoder_WR_en_out),
-		.pc_out			(decoder_pc_out),
+		
+		.imm_out			(decoder_imm_out),		
+		.branch_offset	(decoder_branch_offset_out),
 		.alu_ctrl_out	(decoder_alu_ctrl_out),
-		.imm_out			(decoder_imm_out),
+
+		.WR_en_out		(decoder_WR_en_out),
+		.beq_out			(decoder_beq_out),
+		.bneq_out		(decoder_bneq_out),
 		.imm_sel_out	(decoder_imm_sel_out),
-		.shift_sel_out	(decoder_shift_sel_out)
+		.mem_write_out	(decoder_mem_write_out),
+		.mem_reg_sel	(decoder_mem_reg_sel_out)
 		);
 
-//////////////////////////////////////// assigns ///////////////////////////////////
-
-assign rf_R1_addr_in = decoder_R1_addr_out;
-assign rf_R2_addr_in = decoder_R2_addr_out;
-assign rf_WR_addr_in	= pipe_mw_WR_addr_out;
-assign rf_WR_data_in = pipe_mw_accum_out;
-assign rf_wena			= pipe_mw_WR_en_out;
 /////////////////////////////// module instantiation //////////////////////////////////
 
 regfile #(
@@ -235,22 +271,34 @@ regfile #(
 		.R2_data_out	(rf_R2_data_out), 	// output
 		.WR_addr_in		(rf_WR_addr_in), 		// input
 		.WR_data_in		(rf_WR_data_in), 		// input
-		.wena				(rf_wena), 				// input
+		.wena				(rf_wena_in), 				// input
 		.clk				(clk), 					// input
 		.reset			(reset)					// input
 		);
 	
-//////////////////////////////////////// assigns ///////////////////////////////////
+//////////////////////////////////////// regfile assigns ///////////////////////////////////
 
-assign pipe_de_WR_en_in 	= decoder_WR_en_out;
-assign pipe_de_WR_addr_in 	= decoder_WR_addr_out;
-assign pipe_de_R1_data_in	= rf_R1_data_out;
+assign rf_R1_addr_in = decoder_R1_addr_out;
+assign rf_R2_addr_in = decoder_R2_addr_out;
+assign rf_WR_data_in = pipe_mw_mem_reg_sel_out ? pipe_mw_mem_data_out : pipe_mw_accum_out;
+assign rf_WR_addr_in = pipe_mw_WR_addr_out;
+assign rf_wena_in		= pipe_mw_WR_en_out;
 
-wire [DATAPATH_WIDTH-1:0]	shift_mux_in;
-
-assign shift_mux_in	= decoder_imm_sel_out ? decoder_imm_out : rf_R2_data_out;
-assign pipe_de_R2_data_in = decoder_shift_sel_out ? {59'd0,shift_mux_in[10:6]} : shift_mux_in;
+// to next pipe
+assign pipe_de_pc_in			= pipe_fd_pc_out;
 assign pipe_de_alu_ctrl_in	= decoder_alu_ctrl_out;
+assign pipe_de_R1_data_in	= rf_R1_data_out;
+assign pipe_de_WR_addr_in 	= decoder_WR_addr_out;
+assign pipe_de_branch_offset_in = decoder_branch_offset_out;
+// control signals
+assign pipe_de_R2_data_in	= decoder_imm_sel_out ? decoder_imm_out : rf_R2_data_out;
+assign pipe_de_WR_en_in 	= decoder_WR_en_out;
+assign pipe_de_mem_write_in = decoder_mem_write_out;
+assign pipe_de_mem_reg_sel_in 	= decoder_mem_reg_sel_out;
+assign pipe_de_beq_in		= decoder_beq_out;
+assign pipe_de_bneq_in		= decoder_bneq_out;
+
+
 /////////////////////////////// module instantiation //////////////////////////////////
 
 pipe_decode_execute #(
@@ -259,34 +307,38 @@ pipe_decode_execute #(
 		.INST_ADDR_WIDTH		(INST_ADDR_WIDTH)
 )decode_execute (
 		// input ports
-		.pc_in			(pipe_de_pc_in),
-		.R1_data_in		(pipe_de_R1_data_in),
-		.R2_data_in		(pipe_de_R2_data_in),
-		.R1_addr_in		(pipe_de_R1_addr_in),
-		.R2_addr_in		(pipe_de_R2_addr_in),
-		.WR_addr_in		(pipe_de_WR_addr_in),
-		.WR_en_in		(pipe_de_WR_en_in),
-		.alu_ctrl_in	(pipe_de_alu_ctrl_in),
+		.pc_in				(pipe_de_pc_in),
+		.R1_data_in			(pipe_de_R1_data_in),
+		.R2_data_in			(pipe_de_R2_data_in),
+		.WR_addr_in			(pipe_de_WR_addr_in),
+		.branch_offset_in		(pipe_de_branch_offset_in),
+		.alu_ctrl_in		(pipe_de_alu_ctrl_in),
+		// control signals
+		.WR_en_in			(pipe_de_WR_en_in),
+		.mem_reg_sel_in	(pipe_de_mem_reg_sel_in),
+		.beq_in				(pipe_de_beq_in),
+		.bneq_in				(pipe_de_bneq_in),
+		.mem_write_in		(pipe_de_mem_write_in),
+
 		
 		// output ports
-		.pc_out			(pipe_de_pc_out),
-		.R1_data_out	(pipe_de_R1_data_out),
-		.R2_data_out	(pipe_de_R2_data_out),
-		.R1_addr_out	(pipe_de_R1_addr_out),
-		.R2_addr_out	(pipe_de_R2_addr_out),
-		.WR_addr_out	(pipe_de_WR_addr_out),
-		.WR_en_out		(pipe_de_WR_en_out),
-		.alu_ctrl_out	(pipe_de_alu_ctrl_out),
+		.pc_out				(pipe_de_pc_out),
+		.R1_data_out		(pipe_de_R1_data_out),
+		.R2_data_out		(pipe_de_R2_data_out),
+		.WR_addr_out		(pipe_de_WR_addr_out),
+		.alu_ctrl_out		(pipe_de_alu_ctrl_out),
+		.WR_en_out			(pipe_de_WR_en_out),
+		.mem_reg_sel_out	(pipe_de_mem_reg_sel_out),
+		.beq_out				(pipe_de_beq_out),
+		.bneq_out			(pipe_de_bneq_out),
+		.mem_write_out		(pipe_de_mem_write_out),
+		.branch_offset_out	(pipe_de_branch_offset_out),
 
 		.clk(clk), 
 		.en(en), 
 		.reset(reset)
     );
 
-//////////////////////////////////////// assigns ///////////////////////////////////
-assign alu_a_in 		= pipe_de_R1_data_out;
-assign alu_b_in 		= pipe_de_R2_data_out;
-assign alu_ctrl_in 	= pipe_de_alu_ctrl_out;
 
 /////////////////////////////// module instantiation //////////////////////////////////
 
@@ -296,16 +348,44 @@ alu #(
 ) alu1 (.a_in				(alu_a_in),
 		  .b_in				(alu_b_in),
 		  .alu_ctrl_in		(alu_ctrl_in),
-		  .accum_out		(alu_accum_out)
+		  .accum_out		(alu_accum_out),
+		  .zero_out			(alu_zero_out)
 		  );
 		  
  
-//////////////////////////////////////// assigns ///////////////////////////////////
 
-assign pipe_em_WR_en_in 	= pipe_de_WR_en_out;
-assign pipe_em_WR_addr_in 	= pipe_de_WR_addr_out;
-assign pipe_em_accum_in 	= alu_accum_out;
+/////////////////////////////// module instantiation //////////////////////////////////
 
+branch_adder #(
+.INST_ADDR_WIDTH (INST_ADDR_WIDTH)
+) ba (
+		.pc_in				(badd_pc_in),
+		.branch_offset		(badd_branch_offset_in),
+		.branch_target		(badd_branch_target_out)  
+);
+//////////////////////////////////////// alu assigns ///////////////////////////////////
+assign alu_a_in 		= pipe_de_R1_data_out;
+assign alu_b_in 		= pipe_de_R2_data_out;
+assign alu_ctrl_in 	= pipe_de_alu_ctrl_out;
+//////////////////////////////////////// branch_adder assigns ///////////////////////////////////
+assign badd_pc_in						= pipe_de_pc_out;
+assign badd_branch_offset_in		= pipe_de_branch_offset_out;
+//////////////////////////////////////// assigns to next pipe ///////////////////////////////////
+//from alu
+assign pipe_em_accum_in 			= alu_accum_out;
+assign pipe_em_zero_in				= alu_zero_out;
+//from badd
+assign pipe_em_branch_target_in 	= badd_branch_target_out;
+
+
+// from previous pipe
+assign pipe_em_WR_en_in 			= pipe_de_WR_en_out;
+assign pipe_em_WR_addr_in 			= pipe_de_WR_addr_out;
+assign pipe_em_store_data_in 		= pipe_de_R2_data_out;
+assign pipe_em_mem_reg_sel_in 	= pipe_de_mem_reg_sel_out;
+assign pipe_em_beq_in				= pipe_de_beq_out;
+assign pipe_em_bneq_in				= pipe_de_bneq_out;
+assign pipe_em_mem_write_in 		= pipe_de_mem_write_out;
 /////////////////////////////// module instantiation //////////////////////////////////
 
 pipe_execute_mem #(
@@ -313,16 +393,27 @@ pipe_execute_mem #(
 		.REGFILE_ADDR_WIDTH	(REGFILE_ADDR_WIDTH),
 		.INST_ADDR_WIDTH		(INST_ADDR_WIDTH)
 )execute_mem (
-		.pc_in			(pipe_em_pc_in),
 		.accum_in		(pipe_em_accum_in),
 		.store_data_in	(pipe_em_store_data_in),
 		.WR_addr_in		(pipe_em_WR_addr_in),
 		.WR_en_in		(pipe_em_WR_en_in),
-		.pc_out			(pipe_em_pc_out),
+		.beq_in			(pipe_em_beq_in),
+		.bneq_in			(pipe_em_bneq_in),
+		.mem_write_in	(pipe_em_mem_write_in),
+		.branch_target_in (pipe_em_branch_target_in),
+		.zero_in			(pipe_em_zero_in),
+		.mem_reg_sel_in(pipe_em_mem_reg_sel_in),
+		
 		.accum_out		(pipe_em_accum_out),
 		.store_data_out(pipe_em_store_data_out),
 		.WR_addr_out	(pipe_em_WR_addr_out),
 		.WR_en_out		(pipe_em_WR_en_out),
+		.beq_out			(pipe_em_beq_out),
+		.bneq_out		(pipe_em_bneq_out),
+		.mem_write_out	(pipe_em_mem_write_out),
+		.branch_target_out (pipe_em_branch_target_out),
+		.zero_out		(pipe_em_zero_out),
+		.mem_reg_sel_out(pipe_em_mem_reg_sel_out),
 		
 		.clk				(clk), 
 		.en				(en), 
@@ -332,11 +423,23 @@ pipe_execute_mem #(
 
 
 //////////////////////////////////////// assigns ///////////////////////////////////
+// branch logic
+assign beq_taken 		=  pipe_em_beq_out && pipe_em_zero_out;
+assign bneq_taken		= 	pipe_em_bneq_out && ~pipe_em_zero_out;
+assign branch_true	=	beq_taken | bneq_taken;
+assign pc_in			=	branch_true ? pipe_em_branch_target_out : pc_out;
+// to memory
+assign portb_addr_in 		= {one,alu_accum_out[8:0]};
+assign portb_data_in 		= pipe_em_store_data_out;
+assign portb_we_in 			= pipe_em_mem_write_out;
 
-assign pipe_mw_WR_en_in 	= pipe_em_WR_en_out; 
-assign pipe_mw_WR_addr_in	= pipe_em_WR_addr_out;
-assign pipe_mw_accum_in		= pipe_em_accum_out;
 
+// to next pipe
+assign pipe_mw_mem_data_in 	= portb_data_out;
+assign pipe_mw_WR_en_in 		= pipe_em_WR_en_out; 
+assign pipe_mw_WR_addr_in		= pipe_em_WR_addr_out;
+assign pipe_mw_accum_in			= pipe_em_accum_out;
+assign pipe_mw_mem_reg_sel_in = pipe_em_mem_reg_sel_out;
 
 /////////////////////////////// module instantiation //////////////////////////////////
 
@@ -348,14 +451,24 @@ pipe_mem_wb #(
 		.accum_in		(pipe_mw_accum_in),
 		.WR_addr_in		(pipe_mw_WR_addr_in),
 		.WR_en_in		(pipe_mw_WR_en_in),
+		.mem_reg_sel_in(pipe_mw_mem_reg_sel_in),
+		
 		.mem_data_out	(pipe_mw_mem_data_out),
 		.accum_out		(pipe_mw_accum_out),
 		.WR_addr_out	(pipe_mw_WR_addr_out),
 		.WR_en_out		(pipe_mw_WR_en_out),
+		.mem_reg_sel_out(pipe_mw_mem_reg_sel_out),
 		
 		.clk				(clk), 
 		.en				(en), 
 		.reset			(reset)
     );
 	 
+	 
+//////////////////////////////////////// assigns ///////////////////////////////////
+
+
+
+
+
 endmodule

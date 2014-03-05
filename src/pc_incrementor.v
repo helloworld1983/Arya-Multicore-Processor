@@ -26,7 +26,10 @@ module pc_incrementor
    (input clk,
 	 input en,
 	 input reset,
-    output reg [INST_ADDR_WIDTH-1:0] pc_out);
+	 input wen,
+	 input [INST_ADDR_WIDTH-1:0] 	pc_in,
+    output reg [INST_ADDR_WIDTH-1:0] pc_out
+	 );
    
 always @ (posedge clk)
  begin : COUNTER 
@@ -34,7 +37,8 @@ always @ (posedge clk)
      pc_out <=   'd0;
    end
    else if (en == 1'b1) begin
-     pc_out <=  pc_out + 1;
+		if (wen) 	pc_out 	<= pc_in;
+		else 			pc_out 	<= pc_out + 1;
    end
 end
 	

@@ -25,12 +25,12 @@ module pipe_fetch_decode
 	  parameter REGFILE_ADDR_WIDTH = 5,
 	  parameter INST_ADDR_WIDTH = 9)
 
-   (input [DATAPATH_WIDTH-1:0] inst_in,
+   (input [31:0] inst_in,
 	 input clk,
 	 input en,
 	 input reset, 
 	 input [INST_ADDR_WIDTH-1:0] pc_in,
-    output reg [DATAPATH_WIDTH-1:0] inst_out,
+    output reg [31:0] inst_out,
 	 output reg [INST_ADDR_WIDTH-1:0] pc_out);
 	 
 always @ (posedge clk) 

@@ -25,83 +25,58 @@ module inst_decoder
 	  parameter REGFILE_ADDR_WIDTH = 5,
 	  parameter INST_ADDR_WIDTH = 9)
 
-	(input [DATAPATH_WIDTH-1:0] inst_in,
-	 input [INST_ADDR_WIDTH-1:0] pc_in,
-    output [REGFILE_ADDR_WIDTH-1:0] R1_addr_out,
-    output [REGFILE_ADDR_WIDTH-1:0] R2_addr_out,
+	(input [31:0] inst_in,
+	
+	 //// OUTPUTS////
+	 output [REGFILE_ADDR_WIDTH-1:0]	R1_addr_out,
+	 output [REGFILE_ADDR_WIDTH-1:0]	R2_addr_out,
 	 output [REGFILE_ADDR_WIDTH-1:0] WR_addr_out,
-	 output reg WR_en_out,
-	 output [INST_ADDR_WIDTH-1:0] pc_out,
-	 output reg [3:0] alu_ctrl_out,
-	 output [DATAPATH_WIDTH-1:0]imm_out,
+	 
+	// immediate offsets
+	 output [DATAPATH_WIDTH-1:0]	imm_out,
+	 output [INST_ADDR_WIDTH-1:0]	branch_offset,
+
+	// alu ctrl
+	 output reg [3:0] 				alu_ctrl_out,	 
+	 // control signals
+	 output WR_en_out,
+	 output beq_out,
+	 output bneq_out,
 	 output imm_sel_out,
-	 output shift_sel_out
+	 output mem_write_out,
+	 output mem_reg_sel
 	 );
 	 
 wire [5:0] opcode;
-wire [5:0] alu_func;
+wire [3:0] alu_func;
 
-assign opcode = inst_in[31:26];
-assign alu_func = inst_in[5:0];
+assign opcode 			= inst_in[31:26];
+assign alu_func 		= inst_in[3:0]; // taking two bits from opcode and 4 bits from inst_in.
 assign R1_addr_out 	= inst_in[25:21];
 assign R2_addr_out 	= inst_in[20:16];
 assign WR_addr_out 	= inst_in[15:11];
-assign pc_out 			= pc_in;
 
-assign imm_sel_out		= opcode[3];
-assign shift_sel_out	= opcode[2];
 assign imm_out			= {48'd0,inst_in[15:0]};
+assign branch_offset	= inst_in[8:0];
 
-always @(*)begin
-	if (opcode == 6'b000000) begin
-		case (alu_func)
-		'b000000:	begin // NOP
-						WR_en_out		= 0;
-						alu_ctrl_out	= 0;
-						end
-		'b100000:	begin // ADD R3, R1, R2
-						WR_en_out		= 1;
-						alu_ctrl_out	= 0;
-						end
-		'b100010:	begin // SUBTRACT R3, R1, R2
-						WR_en_out		= 1;
-						alu_ctrl_out	= 1;
-						end
-		'b100100:	begin // AND R3, R1, R2
-						WR_en_out		= 1;
-						alu_ctrl_out	= 2;
-						end
-		'b100101:	begin // OR R3, R1, R2
-						WR_en_out		= 1;
-						alu_ctrl_out	= 3;
-						end
-		'b100111:	begin // NOT R3, R1, R2
-						WR_en_out		= 1;
-						alu_ctrl_out	= 4;
-						end
-		'b100110:	begin // EXOR R3, R1, R2
-						WR_en_out		= 1;
-						alu_ctrl_out	= 5;
-						end
-		default: 	begin
-						WR_en_out		= 0;
-						alu_ctrl_out	= 0;
-						end
-		endcase
-	end else if (opcode == 6'b001000) begin
-		WR_en_out			= 1;
-		alu_ctrl_out		= 0;
-	end else if (opcode == 6'b001100) begin
-		case (alu_func)
-		'b100000: begin
-			WR_en_out			= 1;
-			alu_ctrl_out		= 6;
-			end
-		'b000001: begin
-			WR_en_out 			= 1;
-			alu_ctrl_out		= 7;
-			end
-		endcase
-	end // else if
+///////////////// DATAPATH control signals //////////////////////
+assign 	WR_en_out		= opcode[5];
+assign	beq_out			= opcode[4];
+assign	bneq_out			= opcode[3];
+assign	imm_sel_out		= opcode[2];
+assign	mem_write_out 	= opcode[1];
+assign	mem_reg_sel		= opcode[0];
+///////////////// ALU control signals ////////////////////////////
+
+always @(*) begin
+	if (imm_sel_out) begin
+		alu_ctrl_out	=	'd1; // ALU does add
+	end else if (beq_out || bneq_out) begin
+		alu_ctrl_out 	= 'd2; // ALU does sub
+	end
+	else begin
+		alu_ctrl_out	=	alu_func;
+	end
 end //always
+
 endmodule
