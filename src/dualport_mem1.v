@@ -41,7 +41,6 @@ module dualport_mem1(
 	clka,
 	dina,
 	addra,
-	ena,
 	wea,
 	douta,
 	clkb,
@@ -54,7 +53,6 @@ module dualport_mem1(
 input clka;
 input [63 : 0] dina;
 input [9 : 0] addra;
-input ena;
 input [0 : 0] wea;
 output [63 : 0] douta;
 input clkb;
@@ -75,7 +73,7 @@ output [63 : 0] doutb;
 		.C_DISABLE_WARN_BHV_COLL(0),
 		.C_DISABLE_WARN_BHV_RANGE(0),
 		.C_FAMILY("virtex2p"),
-		.C_HAS_ENA(1),
+		.C_HAS_ENA(0),
 		.C_HAS_ENB(0),
 		.C_HAS_MEM_OUTPUT_REGS_A(0),
 		.C_HAS_MEM_OUTPUT_REGS_B(0),
@@ -85,7 +83,7 @@ output [63 : 0] doutb;
 		.C_HAS_REGCEB(0),
 		.C_HAS_SSRA(0),
 		.C_HAS_SSRB(0),
-		.C_INIT_FILE_NAME("dualport_mem1.mif"),
+		.C_INIT_FILE_NAME("no_coe_file_loaded"),
 		.C_LOAD_INIT_FILE(0),
 		.C_MEM_TYPE(2),
 		.C_MUX_PIPELINE_STAGES(0),
@@ -99,7 +97,7 @@ output [63 : 0] doutb;
 		.C_SINITB_VAL("0"),
 		.C_USE_BYTE_WEA(0),
 		.C_USE_BYTE_WEB(0),
-		.C_USE_DEFAULT_DATA(1),
+		.C_USE_DEFAULT_DATA(0),
 		.C_USE_ECC(0),
 		.C_USE_RAMB16BWER_RST_BHV(0),
 		.C_WEA_WIDTH(1),
@@ -107,7 +105,7 @@ output [63 : 0] doutb;
 		.C_WRITE_DEPTH_A(1024),
 		.C_WRITE_DEPTH_B(1024),
 		.C_WRITE_MODE_A("WRITE_FIRST"),
-		.C_WRITE_MODE_B("READ_FIRST"),
+		.C_WRITE_MODE_B("WRITE_FIRST"),
 		.C_WRITE_WIDTH_A(64),
 		.C_WRITE_WIDTH_B(64),
 		.C_XDEVICEFAMILY("virtex2p"))
@@ -115,7 +113,6 @@ output [63 : 0] doutb;
 		.CLKA(clka),
 		.DINA(dina),
 		.ADDRA(addra),
-		.ENA(ena),
 		.WEA(wea),
 		.DOUTA(douta),
 		.CLKB(clkb),
@@ -123,6 +120,7 @@ output [63 : 0] doutb;
 		.ADDRB(addrb),
 		.WEB(web),
 		.DOUTB(doutb),
+		.ENA(),
 		.REGCEA(),
 		.SSRA(),
 		.ENB(),
