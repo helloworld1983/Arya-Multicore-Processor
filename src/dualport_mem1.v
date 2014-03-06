@@ -41,6 +41,7 @@ module dualport_mem1(
 	clka,
 	dina,
 	addra,
+	ena,
 	wea,
 	douta,
 	clkb,
@@ -53,6 +54,7 @@ module dualport_mem1(
 input clka;
 input [63 : 0] dina;
 input [9 : 0] addra;
+input ena;
 input [0 : 0] wea;
 output [63 : 0] douta;
 input clkb;
@@ -73,7 +75,7 @@ output [63 : 0] doutb;
 		.C_DISABLE_WARN_BHV_COLL(0),
 		.C_DISABLE_WARN_BHV_RANGE(0),
 		.C_FAMILY("virtex2p"),
-		.C_HAS_ENA(0),
+		.C_HAS_ENA(1),
 		.C_HAS_ENB(0),
 		.C_HAS_MEM_OUTPUT_REGS_A(0),
 		.C_HAS_MEM_OUTPUT_REGS_B(0),
@@ -113,6 +115,7 @@ output [63 : 0] doutb;
 		.CLKA(clka),
 		.DINA(dina),
 		.ADDRA(addra),
+		.ENA(ena),
 		.WEA(wea),
 		.DOUTA(douta),
 		.CLKB(clkb),
@@ -120,7 +123,6 @@ output [63 : 0] doutb;
 		.ADDRB(addrb),
 		.WEB(web),
 		.DOUTB(doutb),
-		.ENA(),
 		.REGCEA(),
 		.SSRA(),
 		.ENB(),

@@ -1,7 +1,7 @@
 ##############################################################
 #
 # Xilinx Core Generator version K.39
-# Date: Thu Mar 06 10:23:28 2014
+# Date: Thu Mar 06 10:32:23 2014
 #
 ##############################################################
 #
@@ -44,7 +44,7 @@ CSET component_name=dualport_mem1
 CSET disable_collision_warnings=false
 CSET disable_out_of_range_warnings=false
 CSET ecc=false
-CSET enable_a=Always_Enabled
+CSET enable_a=Use_ENA_Pin
 CSET enable_b=Always_Enabled
 CSET fill_remaining_memory_locations=false
 CSET load_init_file=false
@@ -74,5 +74,5 @@ CSET write_width_a=64
 CSET write_width_b=64
 # END Parameters
 GENERATE
-# CRC: 9336aac5
+# CRC: 9fc9cdbe
 
