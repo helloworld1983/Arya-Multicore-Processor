@@ -33,6 +33,7 @@ module arya #(
     input 		[DATAPATH_WIDTH-1:0] mem_data_in,
     input 		setup_mem,
 	 input 		verify_mem,
+	 input 		enable_mem,
     output 		[DATAPATH_WIDTH-1:0] mem_data_out
     );
 	 
@@ -84,6 +85,7 @@ wire 										decoder_imm_sel_out;
 wire 										decoder_beq_out;
 wire 										decoder_bneq_out;
 wire 										decoder_mem_write_out;
+wire 										decoder_halt_cpu_out;
 
 //////////////////////////////////////// wires register_file /////////////////////////////////// 
 		 
@@ -188,7 +190,7 @@ pc_incrementor #(
 			.INST_ADDR_WIDTH	(INST_ADDR_WIDTH)
 	) pc (
 		.clk			(clk), 
-		.en			(en),
+		.en			(~decoder_halt_cpu_out),
 		.wen			(branch_true),
 		.reset		(reset),
 		.pc_in		(pc_in),		
@@ -198,13 +200,15 @@ pc_incrementor #(
 //////////////////////////////////////// assigns ///////////////////////////////////
 
 //porta
-assign porta_addr_in 	= pc_out_extended;
-assign porta_data_in		= 'd0;
-assign porta_we_in		= 0;
+wire debug_mem;
+assign debug_mem = setup_mem | verify_mem;
+assign porta_addr_in 	= debug_mem ? mem_addr_in : pc_out_extended;
+assign porta_data_in		= mem_data_in;
+assign porta_we_in		= setup_mem;
 /////////////////////////////// module instantiation //////////////////////////////////
 
 dualport_mem1 memory (
-		.ena				(1),
+		.ena				(~decoder_halt_cpu_out || enable_mem),
 		.addra			(porta_addr_in), 	// input
 		.dina				(porta_data_in), 	// input
 		.wea				(porta_we_in),		// input
@@ -219,6 +223,7 @@ dualport_mem1 memory (
 		 
 //////////////////////////////////////// assigns ///////////////////////////////////
 assign pipe_fd_inst_in 	= porta_data_out;
+assign mem_data_out		= porta_data_out;
 assign pipe_fd_pc_in 	= pc_out;
 /////////////////////////////// module instantiation //////////////////////////////////
 
@@ -231,7 +236,7 @@ pipe_fetch_decode fetch_decode (
 		.pc_out   	 	(pipe_fd_pc_out),
 		
 		.clk				(clk), 					// input
-		.en				(en), 						// input
+		.en				(~decoder_halt_cpu_out), 						// input
 		.reset			(reset) 				// input
 		);
 
@@ -240,7 +245,8 @@ pipe_fetch_decode fetch_decode (
 // HACK - Since the memory takes address and returns data in the next clock,
 // the decoder needs to take the instruction in directly from the memory and not from the 
 // fetch-decode stage register.
-assign decoder_inst_in = porta_data_out;
+assign decoder_inst_in = debug_mem ? 'hFFFFFFFF : porta_data_out;
+
 														
 /////////////////////////////// module instantiation //////////////////////////////////
 
@@ -264,7 +270,8 @@ inst_decoder #(
 		.bneq_out		(decoder_bneq_out),
 		.imm_sel_out	(decoder_imm_sel_out),
 		.mem_write_out	(decoder_mem_write_out),
-		.mem_reg_sel	(decoder_mem_reg_sel_out)
+		.mem_reg_sel	(decoder_mem_reg_sel_out),
+		.halt_cpu_out	(decoder_halt_cpu_out)
 		);
 
 /////////////////////////////// module instantiation //////////////////////////////////
@@ -291,7 +298,7 @@ assign rf_R1_addr_in = decoder_R1_addr_out;
 assign rf_R2_addr_in = decoder_R2_addr_out;
 assign rf_WR_data_in = pipe_mw_mem_reg_sel_out ? pipe_mw_mem_data_out : pipe_mw_accum_out;
 assign rf_WR_addr_in = pipe_mw_WR_addr_out;
-assign rf_wena_in		= pipe_mw_WR_en_out;
+assign rf_wena_in		= pipe_mw_WR_en_out && ~decoder_halt_cpu_out;
 
 // to next pipe
 assign pipe_de_pc_in			= pipe_fd_pc_out;
@@ -347,7 +354,7 @@ pipe_decode_execute #(
 		.branch_offset_out	(pipe_de_branch_offset_out),
 
 		.clk(clk), 
-		.en(en), 
+		.en(~decoder_halt_cpu_out), 
 		.reset(reset)
     );
 
@@ -428,7 +435,7 @@ pipe_execute_mem #(
 		.mem_reg_sel_out(pipe_em_mem_reg_sel_out),
 		
 		.clk				(clk), 
-		.en				(en), 
+		.en				(~decoder_halt_cpu_out), 
 		.reset			(reset)
     );
 
@@ -472,7 +479,7 @@ pipe_mem_wb #(
 		.mem_reg_sel_out(pipe_mw_mem_reg_sel_out),
 		
 		.clk				(clk), 
-		.en				(en), 
+		.en				(~decoder_halt_cpu_out), 
 		.reset			(reset)
     );
 	 

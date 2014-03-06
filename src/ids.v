@@ -10,7 +10,7 @@
 // dbs_cmd [6] 	= stepvalue bit 1
 // dbs_cmd [7] 	= stepvalue bit 2
 // dbs_cmd [8] 	= reset step count
-// dbs_cmd [9] 	= unused
+// dbs_cmd [9] 	= enable mem
 // dbs_cmd [10] 	= unused
 // dbs_cmd [11] 	= unused
 // dbs_cmd [12] 	= unused
@@ -156,7 +156,8 @@ module ids
 	.en							(cpu_en),			// Forcing it to be one.
 	.reset						(dbs_cmd[0]),
 	.setup_mem					(dbs_cmd[1]),
-	.verify_mem					(dbs_cmd[2])
+	.verify_mem					(dbs_cmd[2]),
+	.enable_mem					(dbs_cmd[9])
 	);
 	
 

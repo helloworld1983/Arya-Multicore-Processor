@@ -60,7 +60,7 @@ always @(posedge clk) begin
 			end
    end 
   else begin
-	 if (wena && (WR_addr_in != 0'd0)) 
+	 if (wena) 
 		regfile[WR_addr_in] <= WR_data_in;
     end
   end

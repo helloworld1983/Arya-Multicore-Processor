@@ -85,7 +85,7 @@ output [63 : 0] doutb;
 		.C_HAS_REGCEB(0),
 		.C_HAS_SSRA(0),
 		.C_HAS_SSRB(0),
-		.C_INIT_FILE_NAME("dualport_mem1.mif"),
+		.C_INIT_FILE_NAME("no_coe_file_loaded"),
 		.C_LOAD_INIT_FILE(0),
 		.C_MEM_TYPE(2),
 		.C_MUX_PIPELINE_STAGES(0),
@@ -107,7 +107,7 @@ output [63 : 0] doutb;
 		.C_WRITE_DEPTH_A(1024),
 		.C_WRITE_DEPTH_B(1024),
 		.C_WRITE_MODE_A("WRITE_FIRST"),
-		.C_WRITE_MODE_B("READ_FIRST"),
+		.C_WRITE_MODE_B("WRITE_FIRST"),
 		.C_WRITE_WIDTH_A(64),
 		.C_WRITE_WIDTH_B(64),
 		.C_XDEVICEFAMILY("virtex2p"))

@@ -26,6 +26,7 @@ module branch_adder # (
     output 	[INST_ADDR_WIDTH-1:0] 	branch_target
     );
 
-assign branch_target = pc_in + branch_offset;
+//assign branch_target = pc_in + branch_offset;
+assign branch_target = branch_offset;
 
 endmodule
