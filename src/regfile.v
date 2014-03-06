@@ -56,11 +56,11 @@ integer i;
 always @(posedge clk) begin
 	if (reset) begin
 			for(i = 0; i < (2 ** REGFILE_ADDR_WIDTH); i = i + 1) begin
-				regfile[i] <= 'd4; //  HACK - MAKE THIS ZERO IF NOT!!!!!
+				regfile[i] <= 'd0; //  HACK - MAKE THIS ZERO IF NOT!!!!!
 			end
    end 
   else begin
-	 if (wena) 
+	 if (wena && (WR_addr_in != 0'd0)) 
 		regfile[WR_addr_in] <= WR_data_in;
     end
   end

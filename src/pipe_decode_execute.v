@@ -28,6 +28,7 @@ module pipe_decode_execute
 	(input [INST_ADDR_WIDTH-1:0] pc_in,
     input [DATAPATH_WIDTH-1:0] R1_data_in,
     input [DATAPATH_WIDTH-1:0] R2_data_in,
+	 input [DATAPATH_WIDTH-1:0] store_data_in,
 	 input [REGFILE_ADDR_WIDTH-1:0] WR_addr_in,
 	 input [3:0] alu_ctrl_in,
 	 input WR_en_in,
@@ -43,6 +44,7 @@ module pipe_decode_execute
     output reg [INST_ADDR_WIDTH-1:0] pc_out,
     output reg [DATAPATH_WIDTH-1:0] R1_data_out,
     output reg [DATAPATH_WIDTH-1:0] R2_data_out,
+	 output reg [DATAPATH_WIDTH-1:0] store_data_out,
 	 output reg [REGFILE_ADDR_WIDTH-1:0] WR_addr_out,
 	 output reg [3:0] alu_ctrl_out,
 	 output reg beq_out,
@@ -69,6 +71,7 @@ always @ (posedge clk)
 		bneq_out				<= 'd0;
 		mem_write_out 		<= 'd0;
 		branch_offset_out	<= 'd0;
+		store_data_out <= 'd0;
 	 end
 	 else if (en) begin
 		pc_out <= pc_in;
@@ -82,6 +85,7 @@ always @ (posedge clk)
 		bneq_out				<= bneq_in;
 		mem_write_out		<= mem_write_in;
 		branch_offset_out	<= branch_offset_in;
+		store_data_out	<= store_data_in;
 	 end
 	end
 endmodule
