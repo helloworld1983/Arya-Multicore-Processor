@@ -100,6 +100,7 @@ wire 	rf_wena_in;
 wire 	[INST_ADDR_WIDTH-1:0]		pipe_de_pc_in;
 wire	[DATAPATH_WIDTH-1:0]			pipe_de_R1_data_in;	
 wire	[DATAPATH_WIDTH-1:0]			pipe_de_R2_data_in;
+wire 	[DATAPATH_WIDTH-1:0]			pipe_store_data_in;
 wire	[REGFILE_ADDR_WIDTH-1:0]	pipe_de_WR_addr_in;
 wire [3:0]								pipe_de_alu_ctrl_in;
 wire [INST_ADDR_WIDTH-1:0]			pipe_de_branch_offset_in;
@@ -109,10 +110,12 @@ wire 										pipe_de_mem_reg_sel_in;
 wire 										pipe_de_beq_in;
 wire										pipe_de_bneq_in;
 wire 										pipe_de_mem_write_in;
+wire 	[DATAPATH_WIDTH-1:0]			pipe_de_store_data_in;
 
 wire 	[INST_ADDR_WIDTH-1:0]		pipe_de_pc_out;
 wire	[DATAPATH_WIDTH-1:0]			pipe_de_R1_data_out;	
 wire	[DATAPATH_WIDTH-1:0]			pipe_de_R2_data_out;
+wire 	[DATAPATH_WIDTH-1:0]			pipe_store_data_out;
 wire	[REGFILE_ADDR_WIDTH-1:0]	pipe_de_WR_addr_out;
 wire [3:0]								pipe_de_alu_ctrl_out;
 wire [INST_ADDR_WIDTH-1:0]			pipe_de_branch_offset_out;
@@ -122,6 +125,7 @@ wire 										pipe_de_mem_reg_sel_out;
 wire 										pipe_de_beq_out;
 wire										pipe_de_bneq_out;
 wire 										pipe_de_mem_write_out;
+wire 	[DATAPATH_WIDTH-1:0]			pipe_de_store_data_out;
 //////////////////////////////////////// wires alu /////////////////////////////////// 
 
 wire	[DATAPATH_WIDTH-1:0]			alu_accum_out;
@@ -232,7 +236,12 @@ pipe_fetch_decode fetch_decode (
 		);
 
 //////////////////////////////////////// decoder assigns ///////////////////////////////////
-assign decoder_inst_in = pipe_fd_inst_out;
+// assign decoder_inst_in = pipe_fd_inst_out; 
+// HACK - Since the memory takes address and returns data in the next clock,
+// the decoder needs to take the instruction in directly from the memory and not from the 
+// fetch-decode stage register.
+assign decoder_inst_in = porta_data_out;
+														
 /////////////////////////////// module instantiation //////////////////////////////////
 
 inst_decoder #(
@@ -288,7 +297,7 @@ assign rf_wena_in		= pipe_mw_WR_en_out;
 assign pipe_de_pc_in			= pipe_fd_pc_out;
 assign pipe_de_alu_ctrl_in	= decoder_alu_ctrl_out;
 assign pipe_de_R1_data_in	= rf_R1_data_out;
-assign pipe_de_WR_addr_in 	= decoder_WR_addr_out;
+assign pipe_de_WR_addr_in 	= decoder_imm_sel_out ? decoder_R2_addr_out : decoder_WR_addr_out;
 assign pipe_de_branch_offset_in = decoder_branch_offset_out;
 // control signals
 assign pipe_de_R2_data_in	= decoder_imm_sel_out ? decoder_imm_out : rf_R2_data_out;
@@ -297,6 +306,7 @@ assign pipe_de_mem_write_in = decoder_mem_write_out;
 assign pipe_de_mem_reg_sel_in 	= decoder_mem_reg_sel_out;
 assign pipe_de_beq_in		= decoder_beq_out;
 assign pipe_de_bneq_in		= decoder_bneq_out;
+assign pipe_de_store_data_in = rf_R2_data_out;
 
 
 /////////////////////////////// module instantiation //////////////////////////////////
@@ -310,8 +320,9 @@ pipe_decode_execute #(
 		.pc_in				(pipe_de_pc_in),
 		.R1_data_in			(pipe_de_R1_data_in),
 		.R2_data_in			(pipe_de_R2_data_in),
+		.store_data_in		(pipe_de_store_data_in),
 		.WR_addr_in			(pipe_de_WR_addr_in),
-		.branch_offset_in		(pipe_de_branch_offset_in),
+		.branch_offset_in	(pipe_de_branch_offset_in),
 		.alu_ctrl_in		(pipe_de_alu_ctrl_in),
 		// control signals
 		.WR_en_in			(pipe_de_WR_en_in),
@@ -325,6 +336,7 @@ pipe_decode_execute #(
 		.pc_out				(pipe_de_pc_out),
 		.R1_data_out		(pipe_de_R1_data_out),
 		.R2_data_out		(pipe_de_R2_data_out),
+		.store_data_out	(pipe_de_store_data_out),
 		.WR_addr_out		(pipe_de_WR_addr_out),
 		.alu_ctrl_out		(pipe_de_alu_ctrl_out),
 		.WR_en_out			(pipe_de_WR_en_out),
@@ -381,7 +393,7 @@ assign pipe_em_branch_target_in 	= badd_branch_target_out;
 // from previous pipe
 assign pipe_em_WR_en_in 			= pipe_de_WR_en_out;
 assign pipe_em_WR_addr_in 			= pipe_de_WR_addr_out;
-assign pipe_em_store_data_in 		= pipe_de_R2_data_out;
+assign pipe_em_store_data_in 		= pipe_de_store_data_out;
 assign pipe_em_mem_reg_sel_in 	= pipe_de_mem_reg_sel_out;
 assign pipe_em_beq_in				= pipe_de_beq_out;
 assign pipe_em_bneq_in				= pipe_de_bneq_out;
@@ -429,9 +441,9 @@ assign bneq_taken		= 	pipe_em_bneq_out && ~pipe_em_zero_out;
 assign branch_true	=	beq_taken | bneq_taken;
 assign pc_in			=	branch_true ? pipe_em_branch_target_out : pc_out;
 // to memory
-assign portb_addr_in 		= {one,alu_accum_out[8:0]};
-assign portb_data_in 		= pipe_em_store_data_out;
-assign portb_we_in 			= pipe_em_mem_write_out;
+assign portb_addr_in 		= {one,alu_accum_out[8:0]}; // TIMING FIX
+assign portb_data_in 		= pipe_de_store_data_out; // TIMING FIX
+assign portb_we_in 			= pipe_de_mem_write_out;
 
 
 // to next pipe
