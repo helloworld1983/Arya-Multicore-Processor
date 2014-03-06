@@ -44,7 +44,8 @@ module inst_decoder
 	 output bneq_out,
 	 output imm_sel_out,
 	 output mem_write_out,
-	 output mem_reg_sel
+	 output mem_reg_sel,
+	 output reg halt_cpu_out
 	 );
 	 
 wire [5:0] opcode;
@@ -69,6 +70,9 @@ assign	mem_reg_sel		= opcode[0];
 ///////////////// ALU control signals ////////////////////////////
 
 always @(*) begin
+	if (opcode == 'b111111) halt_cpu_out = 1;
+	else halt_cpu_out	= 0;
+		
 	if (imm_sel_out) begin
 		alu_ctrl_out	=	'd1; // ALU does add
 	end else if (beq_out || bneq_out) begin

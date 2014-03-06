@@ -1,7 +1,7 @@
 ##############################################################
 #
 # Xilinx Core Generator version K.39
-# Date: Thu Mar 06 04:44:06 2014
+# Date: Thu Mar 06 10:09:59 2014
 #
 ##############################################################
 #
@@ -38,7 +38,7 @@ SELECT Block_Memory_Generator family Xilinx,_Inc. 2.8
 CSET algorithm=Minimum_Area
 CSET assume_synchronous_clk=false
 CSET byte_size=9
-CSET coe_file=C:/Xilinx/10.1/ISE/ISEexamples/cleanarya/binaries.coe
+CSET coe_file=C:/Xilinx/10.1/ISE/ISEexamples/test_arya_1/binaries_and.coe
 CSET collision_warnings=ALL
 CSET component_name=dualport_mem1
 CSET disable_collision_warnings=false
@@ -46,7 +46,7 @@ CSET disable_out_of_range_warnings=false
 CSET ecc=false
 CSET enable_a=Use_ENA_Pin
 CSET enable_b=Always_Enabled
-CSET fill_remaining_memory_locations=false
+CSET fill_remaining_memory_locations=true
 CSET load_init_file=false
 CSET memory_type=True_Dual_Port_RAM
 CSET operating_mode_a=WRITE_FIRST
@@ -74,5 +74,5 @@ CSET write_width_a=64
 CSET write_width_b=64
 # END Parameters
 GENERATE
-# CRC: e5544f21
+# CRC: 5da57c68
 

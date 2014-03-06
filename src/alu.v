@@ -29,7 +29,7 @@ module alu # (
     );
 
 
-wire shift_value = b_in[5:0];
+wire [5:0]	shift_value = b_in[5:0];
 assign zero_out = (accum_out == 'd0) ? 1 : 0;
 
 always @(*) begin

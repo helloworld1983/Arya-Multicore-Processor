@@ -68,7 +68,7 @@ always @ (posedge clk)
 		mem_reg_sel_out <= 'd0;
 	 end
 	 else if (en) begin
-		branch_target_out 			<= branch_target_in;
+		branch_target_out 	<= branch_target_in;
 		accum_out 		<= accum_in;
 		store_data_out <= store_data_in;
 		WR_addr_out 	<= WR_addr_in;
