@@ -24,12 +24,12 @@ module alu # (
     input [DATAPATH_WIDTH-1:0] a_in,
     input [DATAPATH_WIDTH-1:0] b_in,
     input [3:0] alu_ctrl_in,
+	 input [4:0] shift_value,
     output reg [DATAPATH_WIDTH-1:0] accum_out,
 	 output zero_out
     );
 
 
-wire [5:0]	shift_value = b_in[5:0];
 assign zero_out = (accum_out == 'd0) ? 1 : 0;
 
 always @(*) begin
@@ -41,10 +41,7 @@ always @(*) begin
 	'd4:accum_out		= a_in | b_in; // OR
 	'd5:accum_out		= ~a_in;			// NOT
 	'd6:accum_out		= a_in ^ b_in;	// EXOR
-	'd7: begin
-		if (a_in < b_in) accum_out	= 'd1;
-		else accum_out		= 'd0;
-		end
+	'd7:accum_out		= (a_in < b_in);
 	'd8:accum_out		= a_in << shift_value;	// SLL
 	'd9:accum_out		= a_in >> shift_value;	// SRL
 
