@@ -24,7 +24,7 @@ module alu # (
     input [DATAPATH_WIDTH-1:0] a_in,
     input [DATAPATH_WIDTH-1:0] b_in,
     input [3:0] alu_ctrl_in,
-	 input [4:0] shift_value,
+	 //input [4:0] shift_value,
     output reg [DATAPATH_WIDTH-1:0] accum_out,
 	 output zero_out
     );
@@ -42,8 +42,8 @@ always @(*) begin
 	'd5:accum_out		= ~a_in;			// NOT
 	'd6:accum_out		= a_in ^ b_in;	// EXOR
 	'd7:accum_out		= (a_in < b_in);
-	'd8:accum_out		= a_in << shift_value;	// SLL
-	'd9:accum_out		= a_in >> shift_value;	// SRL
+	'd8:accum_out		= {a_in[DATAPATH_WIDTH-2:0],1'b0};	// SLL
+	'd9:accum_out		= {1'b0,a_in[DATAPATH_WIDTH-1:1]};	// SRL
 
 	default:accum_out = 'd0;
 	endcase

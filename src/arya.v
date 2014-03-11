@@ -375,7 +375,7 @@ alu #(
 ) alu1 (.a_in				(alu_a_in),
 		  .b_in				(alu_b_in),
 		  .alu_ctrl_in		(alu_ctrl_in),
-		  .shift_value		(alu_shift_value_in),
+		  //.shift_value		(alu_shift_value_in),
 		  .accum_out		(alu_accum_out),
 		  .zero_out			(alu_zero_out)
 		  );

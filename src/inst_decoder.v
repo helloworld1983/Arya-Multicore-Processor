@@ -50,14 +50,15 @@ module inst_decoder
 	 
 wire [5:0] opcode;
 wire [3:0] alu_func;
-
+wire [47:0]sign_extend;
 assign opcode 			= inst_in[31:26];
 assign alu_func 		= inst_in[3:0]; // taking two bits from opcode and 4 bits from inst_in.
 assign R1_addr_out 	= inst_in[25:21];
 assign R2_addr_out 	= inst_in[20:16];
 assign WR_addr_out 	= inst_in[15:11];
 
-assign imm_out			= {48'd0,inst_in[15:0]};
+assign sign_extend 		= $signed(inst_in[15]); 
+assign imm_out			= {sign_extend,inst_in[15:0]};
 assign branch_offset	= inst_in[8:0];
 
 ///////////////// DATAPATH control signals //////////////////////
@@ -73,7 +74,7 @@ always @(*) begin
 	if (opcode == 'b111111) halt_cpu_out = 1;
 	else halt_cpu_out	= 0;
 		
-	if (imm_sel_out) begin
+	if (imm_sel_out) begin 
 		alu_ctrl_out	=	'd1; // ALU does add
 	end else if (beq_out || bneq_out) begin
 		alu_ctrl_out 	= 'd2; // ALU does sub
