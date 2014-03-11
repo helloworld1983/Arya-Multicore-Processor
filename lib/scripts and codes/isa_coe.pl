@@ -2,7 +2,6 @@
 use strict;
 use warnings;
 use Switch;
-use Getopt::Long;
 
 #Creating a file to write
 my $file = "binaries.coe";
@@ -38,19 +37,11 @@ my $bne = "001000";
 my $lw = "100101";
 my $sw = "000110";
 
-my $file_name;
-my $result = GetOptions ("file_name=s" => \$file_name);    # Taking input from command line.
-
-my $file_write = "$file_name";
-print "The file path is $file_write\n";
-open (MYFILE,'<', $file_write)
-  or die "cannot open < $file_write $!";
-
 #Open the file to read the instructions from
-#my $myfile = "mips_isa.asm";
-#unless(open (MYFILE, '<',$myfile)) {
-#	die "Can't open file mips_isa.asm!\n";
-#}
+my $myfile = "mips_isa.asm";
+unless(open (MYFILE, '<',$myfile)) {
+	die "Can't open file mips_isa.asm!\n";
+}
 
 #Loop through every line of the file to extract the instructions convert each to binaries
 while (<MYFILE>) {
@@ -244,11 +235,6 @@ while (<MYFILE>) {
 		$i++;
 	}
 	
-	case "halt" {
-		my $binary = '1' x 64;
-		$store_file_array[$i] = $binary;
-		$i++;
-	}
 }
 }
 
@@ -305,7 +291,7 @@ while ($x1 != 0) {
 
 #Add data to the coe file
 my $data_size = 512;
-my $data = 100;
+my $data = 0;
 while ($data_size != 0) {
 	my $print_data = dec2bin_data($data);
 	if ($data_size == 1) {
