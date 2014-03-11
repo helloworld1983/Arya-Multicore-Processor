@@ -3,14 +3,6 @@ use lib "/usr/local/netfpga/lib/Perl5";
 use strict;
 use Getopt::Long;
 
-
-
-#my $result = Getoptions 
-#        ("" =>  \$,
-#         "" =>                );
-#
-#
-#
 my $COMMAND = 0x2000300;
 my $DATA_HIGH = 0x2000304;
 my $DATA_LOW = 0x2000308;
@@ -40,6 +32,6 @@ while (<MYFILE>) {
         system("regwrite $COMMAND 0x204");                 # Stop programming the memory
         $i++;
     }
-close MYFILE or die "Can't close animals: $!";
+close MYFILE or die "Can't close file: $!";
 
 

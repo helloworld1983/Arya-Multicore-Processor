@@ -7,12 +7,6 @@ my $DATA_HIGH = 0x2000310;
 my $DATA_LOW = 0x2000314;
 my $DATA_ADDR = 0x200030c;
 
-my $file_name = "mem_data.txt";
-open (MYFILE, '>', $file_name)
-  or die "cannot open file to write!";
-
-print MYFILE "No."."\t"."DATA";
-
 system("regwrie $COMMAND 0x204"); 
 
 my $location = 512;
