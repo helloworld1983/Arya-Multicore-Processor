@@ -1,49 +1,4 @@
-//////////////////////////////////
-////// SOFTWARE REGS ////////////
-//////////////////////////////////
-// dbs_cmd [0] 	= send a reset
-// dbs_cmd [1] 	= setup memory
-// dbs_cmd [2] 	= verify mem
-// dbs_cmd [3]  = set debug mode on
-// dbs_cmd [4] 	= enable stepinto
-// dbs_cmd [5] 	= stepvalue bit 0
-// dbs_cmd [6] 	= stepvalue bit 1
-// dbs_cmd [7] 	= stepvalue bit 2
-// dbs_cmd [8] 	= reset step count
-// dbs_cmd [9] 	= enable mem
-// dbs_cmd [10] 	= unused
-// dbs_cmd [11] 	= unused
-// dbs_cmd [12] 	= unused
-// dbs_cmd [13] 	= unused
-////////////////////////////////////
-// [31:0] 	dbs_input_data_high 	= upper 32 bits of data to program memory
-////////////////////////////////////
-// [31:0] 	dbs_input_data_low 	= lower 32 bits of data to program memory
-////////////////////////////////////
-// [31:0] 	dbs_input_addr 			= memory address to program
-///////////////////////////////////
-
-
-/////////////////////////////////////
-///// HARDWARE REGS//////////////////
-////////////////////////////////////
-// [31:0]	dbh_output_data_high		= upper 32 bits of data read from mem
-/////////////////////////////////////
-// [31:0]	dbh_output_data_low		= lower 32 bits of data read from mem
-////////////////////////////////////
-// [31:0]	dbh_step_count		 	= Number of steps the simulation has run
-////////////////////////////////////
-
-
 `timescale 1ns/1ps
-// defines
-
-`define REGFILE_ADDR_WIDTH 	3
-`define MEM_ADDR_WIDTH 			10
-`define INST_ADDR_WIDTH 		9
-`define NUM_COUNTERS 			0
-`define NUM_SOFTWARE_REGS 		4
-`define NUM_HARDWARE_REGS 		3
 
 module ids 
    #(
@@ -97,68 +52,116 @@ module ids
    reg                           out_wr_int;
 
    // software registers 
-   wire [31:0]                   dbs_cmd;
-   wire [31:0]                   dbs_input_data_high;
-   wire [31:0]                   dbs_input_data_low;
-	wire [31:0]				     		dbs_input_addr;
+   wire [31:0]                   pattern_high;
+   wire [31:0]                   pattern_low;
+   wire [31:0]                   ids_cmd;
    // hardware registers
-	reg [31:0]                    dbh_output_data_high;
-	reg [31:0]					  		dbh_output_data_low;
-	reg [31:0]					  		dbh_step_count;
+   reg [31:0]                    matches;
 
    // internal state
    reg [1:0]                     state, state_next;
    reg [2:0]                     header_counter, header_counter_next;
-   reg [63:0]					 		out_data_next, out_ctrl_next;
+   reg [63:0]					 out_data_next, out_ctrl_next;
    // local parameter
    parameter                     START = 2'b00;
    parameter                     HEADER = 2'b01;
    parameter                     PAYLOAD = 2'b10;
 
  
-   //------------------------- Local assignments DONOT TOUCH -------------------------------
-
+   //------------------------- Local assignments -------------------------------
+/*
    assign in_rdy     = out_rdy;
    assign out_wr     = in_wr;
    assign out_data   = in_data;
    assign out_ctrl   = in_ctrl;
-	
-	
-	//---------- Local assignments you may touch ---------------------------------------
-      
+  */    
    //------------------------- Modules-------------------------------
-/*	
-	debugger db (
-	.debug_en					(dbs_cmd[3]), 	// Enable debug mode
-	.stepinto_en				(dbs_cmd[4]), 	// Enable this to trigger step-into after loading stepvalue
-	.stepvalue					(dbs_cmd[7:5]),	// Give these values while stepinto_en == 0
-	.clk_in						(clk),
-	.clk_out						(cpu_clk)
-	);
-
-    */
-    
-	wire [31:0] memory_output_data_high;
-	wire [31:0] memory_output_data_low;
 	
-	wire cpu_en = 1'b1;
 	
-	arya #(
-	.INST_ADDR_WIDTH			(`INST_ADDR_WIDTH),
-	.DATAPATH_WIDTH			(DATA_WIDTH),
-	.MEM_ADDR_WIDTH			(`MEM_ADDR_WIDTH),
-	.REGFILE_ADDR_WIDTH		(`REGFILE_ADDR_WIDTH)
-	) core_1(
-	.mem_addr_in				(dbs_input_addr[`MEM_ADDR_WIDTH-1:0]), // Address of memory written by software regs
-	.mem_data_in				({dbs_input_data_high, dbs_input_data_low}), // Data of memory written by software regs
-	.mem_data_out				({memory_output_data_high, memory_output_data_low}),
-	.clk							(clk),
-	.en							(cpu_en),			// Forcing it to be one.
-	.reset						(dbs_cmd[0]),
-	.setup_mem					(dbs_cmd[1]),
-	.verify_mem					(dbs_cmd[2]),
-	.enable_mem					(dbs_cmd[9])
+	wire mem_web;
+	wire [7:0]mem_ctrl;
+	wire [63:0]mem_data;
+	wire [7:0]porta_addr;
+	wire [7:0]portb_addr;
+	wire porta_wena;
+	wire porta_wen;
+	
+	wire [7:0]packet_start_addr;
+	wire [7:0]packet_end_addr;
+	wire packet_rdy;
+	
+	reg out_wr_delay;
+	reg proc_done;
+	
+	controller ctrl
+	(
+	.in_wr				(in_wr),
+	.in_ctrl				(in_ctrl),
+	.in_data				(in_data),
+	.out_rdy				(out_rdy),
+	.proc_done			(proc_done),
+	.clk					(clk),
+	.reset				(reset),
+	.out_wr				(out_wr_next),
+	.out_ctrl			(mem_ctrl),
+	.out_data			(mem_data),
+	.out_wr_addr		(porta_addr),
+	.out_rd_addr		(portb_addr),
+	.mem_wen				(porta_wen),
+	.in_rdy				(in_rdy),
+	.packet_rdy			(packet_rdy),
+	.packet_start_addr	(packet_start_addr),
+	.packet_end_addr		(packet_end_addr)
 	);
+	
+	wire [7:0] porta_dout;
+	wire [63:0] porta_ctrlout;
+	
+	wire [63:0] portb_dout;
+	wire [7:0] portb_ctrlout;
+	
+	data_mem m1 (
+	.clka					(clk),
+	.dina					({mem_ctrl,mem_data}),
+	.addra				(porta_addr),
+	.wea					(porta_wen),
+	.douta				({porta_ctrlout,porta_dout}),
+	.clkb					(clk),
+	.dinb					(0),
+	.addrb				(portb_addr),
+	.web					(0),
+	.doutb				({portb_ctrlout, portb_dout})
+	);
+	/*
+	arya core1(
+	.start_addr			(),
+	.end_addr			(),
+	.data_in				(),
+	.processor_en				(),
+	
+	.processor_done	(),
+	.addr_out		(),
+	.data_out			(),
+	.mem_wen				()
+	);
+	*/
+	
+	assign out_ctrl = portb_ctrlout;
+	assign out_data = portb_dout;
+	reg out_wr_reg;
+	assign out_wr = out_wr_reg;
+	
+	
+	always @(posedge clk) begin
+		proc_done <= packet_rdy;
+		out_wr_reg <= out_wr_next;
+	end
+	
+	
+	
+	
+	
+	
 	
 
    generic_regs
@@ -166,9 +169,9 @@ module ids
       .UDP_REG_SRC_WIDTH   (UDP_REG_SRC_WIDTH),
       .TAG                 (`IDS_BLOCK_ADDR),          // Tag -- eg. MODULE_TAG
       .REG_ADDR_WIDTH      (`IDS_REG_ADDR_WIDTH),     // Width of block addresses -- eg. MODULE_REG_ADDR_WIDTH
-      .NUM_COUNTERS        (`NUM_COUNTERS),                 // Number of counters
-      .NUM_SOFTWARE_REGS   (`NUM_SOFTWARE_REGS),                 // Number of sw regs
-      .NUM_HARDWARE_REGS   (`NUM_HARDWARE_REGS)                  // Number of hw regs
+      .NUM_COUNTERS        (0),                 // Number of counters
+      .NUM_SOFTWARE_REGS   (3),                 // Number of sw regs
+      .NUM_HARDWARE_REGS   (1)                  // Number of hw regs
    ) module_regs (
       .reg_req_in       (reg_req_in),
       .reg_ack_in       (reg_ack_in),
@@ -189,36 +192,16 @@ module ids
       .counter_decrement(),
 
       // --- SW regs interface
-      .software_regs    ({dbs_input_addr,dbs_input_data_low,dbs_input_data_high,dbs_cmd}),
+      .software_regs    ({ids_cmd,pattern_low,pattern_high}),
 
       // --- HW regs interface
-      .hardware_regs    ({dbh_step_count,dbh_output_data_low,dbh_output_data_high}),
+      .hardware_regs    (matches),
 
       .clk              (clk),
       .reset            (reset)
     );
 
-   //------------------------- Logic-------------------------------
-	
-	always @(posedge clk) begin
-		if (reset) begin
-			dbh_output_data_high <= 0;
-			dbh_output_data_low <= 0;
-		end
-		else begin
-			dbh_output_data_high <= memory_output_data_high;
-			dbh_output_data_low <= memory_output_data_low;
-		end
-	end //always
 
-	always @(posedge clk) begin		
-		if (dbs_cmd[0])begin
-			dbh_step_count <= 0;
-		end // if (ids_cmd[0])
-		else begin
-			dbh_step_count <= dbh_step_count + 1;
-		end // else
-	end // always
 
 
 endmodule 
