@@ -89,8 +89,8 @@ module ids
 	wire [7:0]packet_start_addr;
 	wire [7:0]packet_end_addr;
 	wire packet_rdy;
-	
-	reg out_wr_delay;
+	reg in_rdy_reg;
+	wire in_rdy_next;
 	reg proc_done;
 	
 	controller ctrl
@@ -108,7 +108,7 @@ module ids
 	.out_wr_addr		(porta_addr),
 	.out_rd_addr		(portb_addr),
 	.mem_wen				(porta_wen),
-	.in_rdy				(in_rdy),
+	.in_rdy				(in_rdy_next),
 	.packet_rdy			(packet_rdy),
 	.packet_start_addr	(packet_start_addr),
 	.packet_end_addr		(packet_end_addr)
@@ -150,11 +150,13 @@ module ids
 	assign out_data = portb_dout;
 	reg out_wr_reg;
 	assign out_wr = out_wr_reg;
+	assign in_rdy = in_rdy_reg;
 	
 	
 	always @(posedge clk) begin
 		proc_done <= packet_rdy;
 		out_wr_reg <= out_wr_next;
+		in_rdy_reg <= in_rdy_next;
 	end
 	
 	

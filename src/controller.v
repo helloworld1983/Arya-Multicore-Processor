@@ -64,7 +64,7 @@ end // if (reset)
 else begin
 	case(state)
 		START: begin
-		if (in_wr && in_ctrl) begin
+		if (in_wr && (in_ctrl != 0)) begin
 			state <= PACKET;
 			out_wr_addr <= out_wr_addr + 1;
 			packet_start_addr <= out_wr_addr + 1;
@@ -80,7 +80,7 @@ else begin
 				out_ctrl <= in_ctrl;
 				out_data <= in_data;
 			end
-			if (in_wr && in_ctrl)begin
+			if (in_wr && (in_ctrl != 0))begin
 				packet_end_addr	<= out_wr_addr + 1;
 				packet_rdy	<= 1;
 				in_rdy <= 0;
