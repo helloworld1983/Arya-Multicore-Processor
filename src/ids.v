@@ -1,5 +1,23 @@
+///////////////////////////////////////////////////////////////////////////////
+// vim:set shiftwidth=3 softtabstop=3 expandtab:
+// Module: ids_sim.v
+// Project: NF2.1
+// Description: Defines a simple ids module for the user data path.  The
+// modules reads a 64-bit register that contains a pattern to match and
+// counts how many packets match.  The register contents are 7 bytes of
+// pattern and one byte of mask.  The mask bits are set to one for each
+// byte of the pattern that should be included in the mask -- zero bits
+// mean "don't care".
+//
+///////////////////////////////////////////////////////////////////////////////
 `timescale 1ns/1ps
 
+/*
+`define UDP_REG_ADDR_WIDTH 16
+`define CPCI_NF2_DATA_WIDTH 16
+`define IDS_BLOCK_TAG 1
+`define IDS_REG_ADDR_WIDTH 16
+*/
 module ids 
    #(
       parameter DATA_WIDTH = 64,
@@ -12,10 +30,10 @@ module ids
       input                               in_wr,
       output                              in_rdy,
 
-      output  [DATA_WIDTH-1:0]             out_data,
-      output  [CTRL_WIDTH-1:0]             out_ctrl,
-      output                               out_wr,
-      input                                out_rdy,
+      output [DATA_WIDTH-1:0]             out_data,
+      output [CTRL_WIDTH-1:0]             out_ctrl,
+      output                              out_wr,
+      input                               out_rdy,
       
       // --- Register interface
       input                               reg_req_in,
@@ -42,14 +60,23 @@ module ids
 
    //------------------------- Signals-------------------------------
    
-   wire [DATA_WIDTH-1:0]         in_fifo_data;
-   wire [CTRL_WIDTH-1:0]         in_fifo_ctrl;
+   wire [DATA_WIDTH-1:0]         in_fifo_data_p;
+   wire [CTRL_WIDTH-1:0]         in_fifo_ctrl_p;
+	wire 									cpu_done;
+	
+   reg [DATA_WIDTH-1:0]         in_fifo_data;
+   reg [CTRL_WIDTH-1:0]         in_fifo_ctrl;
 
    wire                          in_fifo_nearly_full;
    wire                          in_fifo_empty;
 
    reg                           in_fifo_rd_en;
+	reg 									stop_small_fifo_rd_nxt;
+	reg									stop_small_fifo_rd;
+	reg									stop_small_fifo_rd_d;
    reg                           out_wr_int;
+
+   reg			         out_wr_int_next;
 
    // software registers 
    wire [31:0]                   pattern_high;
@@ -60,111 +87,83 @@ module ids
 
    // internal state
    reg [1:0]                     state, state_next;
+   reg [31:0]                    matches_next;
+   reg                           in_pkt_body, in_pkt_body_next;
+   reg                           end_of_pkt, end_of_pkt_next;
+   reg                           begin_pkt, begin_pkt_next;
    reg [2:0]                     header_counter, header_counter_next;
-   reg [63:0]					 out_data_next, out_ctrl_next;
+
    // local parameter
    parameter                     START = 2'b00;
    parameter                     HEADER = 2'b01;
    parameter                     PAYLOAD = 2'b10;
-
+	parameter							PROCESS = 2'b11;
+   // parameter                  EMPTY = 4'b0001;
+   // parameter                  FILLING = 4'b0010;
+   // parameter                  FULL = 4'b0100;
+   // parameter                  DRAINING = 4'b1000;
  
    //------------------------- Local assignments -------------------------------
-/*
-   assign in_rdy     = out_rdy;
-   assign out_wr     = in_wr;
-   assign out_data   = in_data;
-   assign out_ctrl   = in_ctrl;
-  */    
+
+   assign in_rdy     = !in_fifo_nearly_full;
+//   assign out_wr     = out_wr_int;
+//   assign out_data   = in_fifo_data;
+//   assign out_ctrl   = in_fifo_ctrl;
+   assign matcher_en = (!in_fifo_empty && out_rdy && in_pkt_body);
+   assign matcher_ce = (!in_fifo_empty && out_rdy);
+   assign matcher_reset = (reset || ids_cmd[0] || end_of_pkt);
+	
+	
+	assign input_fifo_rd_en = in_fifo_rd_en && ~stop_small_fifo_rd_nxt;
+	
+	assign dropfifo_write = out_wr_int && ~(stop_small_fifo_rd_d);
+
    //------------------------- Modules-------------------------------
-	
-	
-	wire mem_web;
-	wire [7:0]mem_ctrl;
-	wire [63:0]mem_data;
-	wire [7:0]porta_addr;
-	wire [7:0]portb_addr;
-	wire porta_wena;
-	wire porta_wen;
-	
-	wire [7:0]packet_start_addr;
-	wire [7:0]packet_end_addr;
-	wire packet_rdy;
-	reg in_rdy_reg;
-	wire in_rdy_next;
-	reg proc_done;
-	
-	controller ctrl
-	(
-	.in_wr				(in_wr),
-	.in_ctrl				(in_ctrl),
-	.in_data				(in_data),
-	.out_rdy				(out_rdy),
-	.proc_done			(proc_done),
-	.clk					(clk),
-	.reset				(reset),
-	.out_wr				(out_wr_next),
-	.out_ctrl			(mem_ctrl),
-	.out_data			(mem_data),
-	.out_wr_addr		(porta_addr),
-	.out_rd_addr		(portb_addr),
-	.mem_wen				(porta_wen),
-	.in_rdy				(in_rdy_next),
-	.packet_rdy			(packet_rdy),
-	.packet_start_addr	(packet_start_addr),
-	.packet_end_addr		(packet_end_addr)
+
+   fallthrough_small_fifo #(
+      .WIDTH(CTRL_WIDTH+DATA_WIDTH),
+      .MAX_DEPTH_BITS(2)
+   ) input_fifo (
+      .din           ({in_ctrl, in_data}),   // Data in
+      .wr_en         (in_wr),                // Write enable
+      .rd_en         (input_fifo_rd_en),        // Read the next word 
+      .dout          ({in_fifo_ctrl_p, in_fifo_data_p}),
+      .full          (),
+      .nearly_full   (in_fifo_nearly_full),
+      .empty         (in_fifo_empty),
+      .reset         (reset),
+      .clk           (clk)
+   );
+
+   detect7B matcher (
+      .ce            (matcher_ce),           // data enable
+      .match_en      (matcher_en),           // match enable
+      .clk           (clk),
+      .pipe1         ({in_fifo_ctrl, in_fifo_data}),   // Data in
+//      .hwregA        ({pattern_high, pattern_low}),   // pattern in
+      .hwregA        (64'b0111111100000000000000000000000000000000000000000000000000000111),   // pattern in
+      .match         (matcher_match),        // match out
+      .mrst          (matcher_reset)         // reset in
+   );
+
+	cpu dummy_cpu (
+		.clk 				(clk),
+		.reset			(reset),	
+		.cpu_done		(cpu_done)
 	);
-	
-	wire [7:0] porta_dout;
-	wire [63:0] porta_ctrlout;
-	
-	wire [63:0] portb_dout;
-	wire [7:0] portb_ctrlout;
-	
-	data_mem m1 (
-	.clka					(clk),
-	.dina					({mem_ctrl,mem_data}),
-	.addra				(porta_addr),
-	.wea					(porta_wen),
-	.douta				({porta_ctrlout,porta_dout}),
-	.clkb					(clk),
-	.dinb					(0),
-	.addrb				(portb_addr),
-	.web					(0),
-	.doutb				({portb_ctrlout, portb_dout})
-	);
-	/*
-	arya core1(
-	.start_addr			(),
-	.end_addr			(),
-	.data_in				(),
-	.processor_en				(),
-	
-	.processor_done	(),
-	.addr_out		(),
-	.data_out			(),
-	.mem_wen				()
-	);
-	*/
-	
-	assign out_ctrl = portb_ctrlout;
-	assign out_data = portb_dout;
-	reg out_wr_reg;
-	assign out_wr = out_wr_reg;
-	assign in_rdy = in_rdy_reg;
-	
-	
-	always @(posedge clk) begin
-		proc_done <= packet_rdy;
-		out_wr_reg <= out_wr_next;
-		in_rdy_reg <= in_rdy_next;
-	end
-	
-	
-	
-	
-	
-	
-	
+   dropfifo drop_fifo (
+      .clk           (clk), 
+      .drop_pkt      (0), 
+      .fiforead      (out_rdy), 
+      .fifowrite     (dropfifo_write), 
+      .firstword     (begin_pkt), 
+      .in_fifo       ({in_fifo_ctrl,in_fifo_data}), 
+      .lastword      (end_of_pkt), 
+      .rst           (reset), 
+      .out_fifo      ({out_ctrl,out_data}), 
+      .valid_data    (out_wr)
+   );
+   
 
    generic_regs
    #( 
@@ -203,7 +202,98 @@ module ids
       .reset            (reset)
     );
 
-
-
+   //------------------------- Logic-------------------------------
+   
+   always @(*) begin
+      state_next = state;
+      matches_next = matches;
+      header_counter_next = header_counter;
+      in_fifo_rd_en = 0;
+		stop_small_fifo_rd_nxt = stop_small_fifo_rd;
+      out_wr_int_next = 0;
+      //out_data = 0;
+      end_of_pkt_next = end_of_pkt;
+      in_pkt_body_next = in_pkt_body;
+      begin_pkt_next = begin_pkt;
+      
+      if (!in_fifo_empty && out_rdy) begin
+         out_wr_int_next = 1;
+         in_fifo_rd_en = 1;
+         //out_data = in_fifo_data;
+         
+         case(state)
+            START: begin
+              if (in_fifo_ctrl_p != 0) begin
+                  state_next = HEADER;
+                  begin_pkt_next = 1;
+                  end_of_pkt_next = 0;   // takes matcher out of reset
+               end
+            end
+            HEADER: begin
+               begin_pkt_next = 0;
+               if (in_fifo_ctrl_p == 0) begin
+                  header_counter_next = header_counter + 1'b1;
+                  if (header_counter_next == 3) begin
+                    state_next = PAYLOAD;
+                  end
+               end
+            end
+            PAYLOAD: begin
+               if (in_fifo_ctrl_p != 0) begin
+                  state_next = PROCESS;
+                  header_counter_next = 0;
+                  if (matcher_match) begin
+                     matches_next = matches + 1;
+                  end // if matcher_match)
+                  end_of_pkt_next = 1;   // will tell cpu to start
+                  in_pkt_body_next = 0;
+						stop_small_fifo_rd_nxt = 1;
+               end // if (in_fifo_ctrl_p !=0)
+               else begin
+                  in_pkt_body_next = 1;
+               end // else
+            end // PAYLOAD
+				PROCESS: begin
+					end_of_pkt_next = 0;
+					if (cpu_done == 1) begin
+						state_next = START;
+						stop_small_fifo_rd_nxt = 0;
+					end // if (cpu_done)
+					else begin
+						stop_small_fifo_rd_nxt = 1;
+					end // else
+				end // PROCESS
+         endcase // case(state)
+      end
+   end // always @ (*)
+   
+   always @(posedge clk) begin
+      if(reset) begin
+         matches <= 0;
+         header_counter <= 0;
+         state <= START;
+         begin_pkt <= 0;
+         end_of_pkt <= 0;
+         in_pkt_body <= 0;
+			in_fifo_ctrl <= 0;
+			in_fifo_data <= 0;
+			stop_small_fifo_rd <= 0;
+			stop_small_fifo_rd_d <= 0;
+      end
+      else begin
+         if (ids_cmd[0]) matches <= 0;
+         else matches <= matches_next;
+         header_counter <= header_counter_next;
+         state <= state_next;
+         begin_pkt <= begin_pkt_next;
+         end_of_pkt <= end_of_pkt_next;
+         in_pkt_body <= in_pkt_body_next;
+			in_fifo_ctrl <= in_fifo_ctrl_p;
+			in_fifo_data <= in_fifo_data_p;
+			out_wr_int <= out_wr_int_next;
+			stop_small_fifo_rd <= stop_small_fifo_rd_nxt;
+			stop_small_fifo_rd_d <= stop_small_fifo_rd;
+      end // else: !if(reset)
+   end // always @ (posedge clk)   
 
 endmodule 
