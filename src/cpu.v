@@ -24,7 +24,7 @@ module cpu(
     output reg cpu_done
     );
 
-reg count;
+reg [6:0] count;
 always @(posedge clk) begin
 if (reset) begin
 	count <= 0;

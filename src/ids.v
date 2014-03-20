@@ -255,7 +255,7 @@ module ids
             end // PAYLOAD
 				PROCESS: begin
 					end_of_pkt_next = 0;
-					if (cpu_done == 1) begin
+					if (ids_cmd[1]) begin
 						state_next = START;
 						stop_small_fifo_rd_nxt = 0;
 					end // if (cpu_done)
