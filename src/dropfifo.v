@@ -117,7 +117,13 @@ module CB8CE_HXILINX_dropfifo(CEO, Q, TC, C, CE, CLR);
 endmodule
 `timescale 1ns / 1ps
 
-module dropfifo(clk, 
+module dropfifo #(
+	parameter 	REGFILE_ADDR_WIDTH 	= 5,
+	parameter 	DATAPATH_WIDTH	 		= 64,
+	parameter 	MEM_ADDR_WIDTH			= 8,
+	parameter 	INST_ADDR_WIDTH		= 9
+	) (
+				clk, 
                 drop_pkt, 
                 fiforead, 
                 fifowrite, 
@@ -126,7 +132,15 @@ module dropfifo(clk,
                 lastword, 
                 rst, 
                 out_fifo, 
-                valid_data);
+                valid_data,
+				datamem_first_addr,
+				datamem_last_addr,
+				datamem_addr_in,
+				datamem_data_in,
+				datamem_we,
+				datamem_data_out,
+				fifo_as_mem
+				);
 
     input clk;
     input drop_pkt;
@@ -136,8 +150,17 @@ module dropfifo(clk,
     input [71:0] in_fifo;
     input lastword;
     input rst;
+	input [7:0]		datamem_addr_in;
+	input [DATAPATH_WIDTH-1:0]	datamem_data_in;
+	input 	datamem_we;
+	input fifo_as_mem;
+	
    output [71:0] out_fifo;
    output valid_data;
+   output [MEM_ADDR_WIDTH-1:0]	datamem_first_addr;
+   output [MEM_ADDR_WIDTH-1:0]	datamem_last_addr;
+   output [DATAPATH_WIDTH-1:0]	datamem_data_out;
+   
    
    wire XLXN_11;
    wire XLXN_12;
@@ -154,6 +177,19 @@ module dropfifo(clk,
    wire [71:0] XLXN_39;
    wire XLXN_40;
    
+   
+wire 	[MEM_ADDR_WIDTH-1:0] 	porta_addr_in;
+wire 	[DATAPATH_WIDTH-1:0]	porta_data_in;
+wire							porta_we_in;
+wire 	[DATAPATH_WIDTH-1:0]	porta_data_out;
+
+wire 	[MEM_ADDR_WIDTH-1:0]	portb_addr_in;
+wire 	[DATAPATH_WIDTH-1:0]	portb_data_in;
+wire 							portb_we_in;
+wire	[DATAPATH_WIDTH-1:0]	portb_data_out;
+wire 							enable_mem = 1'b1;
+   
+wire [7:0]							portb_ctrl_out;
    FD XLXI_1 (.C(clk), 
               .D(firstword), 
               .Q(XLXN_11));
@@ -221,11 +257,57 @@ module dropfifo(clk,
                    .I2(fiforead), 
                    .O(XLXN_40));
    VCC XLXI_18 (.P(XLXN_29));
-   dual9Bmem XLXI_20 (.addra(XLXN_36[7:0]), 
+/*   dual9Bmem XLXI_20 (.addra(XLXN_36[7:0]), 
                       .addrb(XLXN_30[7:0]), 
                       .clka(clk), 
                       .clkb(clk), 
                       .dina(XLXN_39[71:0]), 
                       .wea(XLXN_28), 
                       .doutb(out_fifo[71:0]));
+					  */
+					  
+					  
+assign porta_addr_in = fifo_as_mem ? datamem_addr_in : XLXN_36[7:0];
+assign porta_data_in = fifo_as_mem ? datamem_data_in : XLXN_39[DATAPATH_WIDTH-1:0];
+assign datamem_data_out = porta_data_out;
+assign porta_we_in = fifo_as_mem ? datamem_we : XLXN_28;					  
+
+assign portb_addr_in = XLXN_30[7:0];
+assign portb_data_in = 'b0;
+assign out_fifo[63:0] = portb_data_out;
+assign out_fifo[71:64] = portb_ctrl_out;
+assign portb_we_in = 'b0;
+
+
+assign datamem_last_addr = XLXN_36[7:0];
+assign datamem_first_addr = XLXN_30[7:0];
+
+	data_mem  datamem(
+		//.ena				(enable_mem),
+		.addra				(porta_addr_in), 	// input
+		.dina				(porta_data_in), 	// input
+		.wea				(porta_we_in),		// input
+		.douta				(porta_data_out), 	// output
+		.addrb				(portb_addr_in), // input
+		.dinb				(portb_data_in),  // input
+		.web				(portb_we_in),  // input                   
+		.doutb				(portb_data_out),		// output
+		.clka				(clk), 				// input
+		.clkb				(clk) 				// input
+		 );
+		 
+	ctrl_mem  ctrlmem (
+		//.ena				(enable_mem),
+		.addra				(XLXN_36[7:0]), 	// input
+		.dina				(XLXN_39[71:64]), 	// input
+		.wea				(XLXN_28),		// input
+		.douta				(), 	// output
+		.addrb				(portb_addr_in), // input
+		.dinb				(portb_data_in),  // input
+		.web				(portb_we_in),  // input                   
+		.doutb				(portb_ctrl_out),		// output
+		.clka				(clk), 				// input
+		.clkb				(clk) 				// input
+		 );
+		 
 endmodule

@@ -3,9 +3,9 @@
 // Company: 
 // Engineer: 
 // 
-// Create Date:    19:18:55 03/19/2014 
+// Create Date:    19:19:55 03/04/2014 
 // Design Name: 
-// Module Name:    cpu 
+// Module Name:    branch_adder 
 // Project Name: 
 // Target Devices: 
 // Tool versions: 
@@ -18,27 +18,15 @@
 // Additional Comments: 
 //
 //////////////////////////////////////////////////////////////////////////////////
-module cpu(
-    input clk,
-	 input reset,
-    output reg cpu_done
+module branch_adder # (
+	parameter INST_ADDR_WIDTH = 9
+)(
+    input 	[INST_ADDR_WIDTH-1:0] 	pc_in,
+    input 	[INST_ADDR_WIDTH-1:0] 	branch_offset,
+    output 	[INST_ADDR_WIDTH-1:0] 	branch_target
     );
 
-reg [6:0] count;
-always @(posedge clk) begin
-if (reset) begin
-	count <= 0;
-	cpu_done <= 0;
-end // if (reset)
-else begin
-	count <= count + 1;
-	if (count == 0) begin
-		cpu_done <= 1'b1;
-	end
-	else begin
-		cpu_done <= 1'b0;
-	end
-end // else !reset	
-end// always 
+//assign branch_target = pc_in + branch_offset;
+assign branch_target = branch_offset;
 
 endmodule
