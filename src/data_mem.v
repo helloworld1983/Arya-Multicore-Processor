@@ -30,18 +30,17 @@
 // supported by Xilinx, Mentor Graphics and Synplicity synthesis
 // tools. Ensure they are correct for your synthesis tool(s).
 
-// You must compile the wrapper file dualport_mem1.v when simulating
-// the core, dualport_mem1. When compiling the wrapper file, be sure to
+// You must compile the wrapper file data_mem.v when simulating
+// the core, data_mem. When compiling the wrapper file, be sure to
 // reference the XilinxCoreLib Verilog simulation library. For detailed
 // instructions, please refer to the "CORE Generator Help".
 
 `timescale 1ns/1ps
 
-module dualport_mem1(
+module data_mem(
 	clka,
 	dina,
 	addra,
-	ena,
 	wea,
 	douta,
 	clkb,
@@ -53,21 +52,20 @@ module dualport_mem1(
 
 input clka;
 input [63 : 0] dina;
-input [9 : 0] addra;
-input ena;
+input [7 : 0] addra;
 input [0 : 0] wea;
 output [63 : 0] douta;
 input clkb;
 input [63 : 0] dinb;
-input [9 : 0] addrb;
+input [7 : 0] addrb;
 input [0 : 0] web;
 output [63 : 0] doutb;
 
 // synthesis translate_off
 
       BLK_MEM_GEN_V2_8 #(
-		.C_ADDRA_WIDTH(10),
-		.C_ADDRB_WIDTH(10),
+		.C_ADDRA_WIDTH(8),
+		.C_ADDRB_WIDTH(8),
 		.C_ALGORITHM(1),
 		.C_BYTE_SIZE(9),
 		.C_COMMON_CLK(0),
@@ -75,7 +73,7 @@ output [63 : 0] doutb;
 		.C_DISABLE_WARN_BHV_COLL(0),
 		.C_DISABLE_WARN_BHV_RANGE(0),
 		.C_FAMILY("virtex2p"),
-		.C_HAS_ENA(1),
+		.C_HAS_ENA(0),
 		.C_HAS_ENB(0),
 		.C_HAS_MEM_OUTPUT_REGS_A(0),
 		.C_HAS_MEM_OUTPUT_REGS_B(0),
@@ -90,8 +88,8 @@ output [63 : 0] doutb;
 		.C_MEM_TYPE(2),
 		.C_MUX_PIPELINE_STAGES(0),
 		.C_PRIM_TYPE(1),
-		.C_READ_DEPTH_A(1024),
-		.C_READ_DEPTH_B(1024),
+		.C_READ_DEPTH_A(256),
+		.C_READ_DEPTH_B(256),
 		.C_READ_WIDTH_A(64),
 		.C_READ_WIDTH_B(64),
 		.C_SIM_COLLISION_CHECK("ALL"),
@@ -104,10 +102,10 @@ output [63 : 0] doutb;
 		.C_USE_RAMB16BWER_RST_BHV(0),
 		.C_WEA_WIDTH(1),
 		.C_WEB_WIDTH(1),
-		.C_WRITE_DEPTH_A(1024),
-		.C_WRITE_DEPTH_B(1024),
+		.C_WRITE_DEPTH_A(256),
+		.C_WRITE_DEPTH_B(256),
 		.C_WRITE_MODE_A("WRITE_FIRST"),
-		.C_WRITE_MODE_B("READ_FIRST"),
+		.C_WRITE_MODE_B("WRITE_FIRST"),
 		.C_WRITE_WIDTH_A(64),
 		.C_WRITE_WIDTH_B(64),
 		.C_XDEVICEFAMILY("virtex2p"))
@@ -115,7 +113,6 @@ output [63 : 0] doutb;
 		.CLKA(clka),
 		.DINA(dina),
 		.ADDRA(addra),
-		.ENA(ena),
 		.WEA(wea),
 		.DOUTA(douta),
 		.CLKB(clkb),
@@ -123,6 +120,7 @@ output [63 : 0] doutb;
 		.ADDRB(addrb),
 		.WEB(web),
 		.DOUTB(doutb),
+		.ENA(),
 		.REGCEA(),
 		.SSRA(),
 		.ENB(),
@@ -136,7 +134,7 @@ output [63 : 0] doutb;
 
 // XST black box declaration
 // box_type "black_box"
-// synthesis attribute box_type of dualport_mem1 is "black_box"
+// synthesis attribute box_type of data_mem is "black_box"
 
 endmodule
 
