@@ -51,7 +51,7 @@ module outfifo_arbiter # (
 	reg [NUM_THREADS-1:0]	fifo_rdy_reset;
 	
 	
-		always @(*) begin
+			always @(*) begin
 		fifo_start_read_next = fifo_start_read;
 		state_next = state;
 		
