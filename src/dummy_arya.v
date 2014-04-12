@@ -143,7 +143,7 @@ module dummy_arya#(
 			else begin
 				count[10*(i+1)-1:10*i] <= count[10*(i+1)-1:10*i] + 1;
 			end // else
-			if (count[10*(i+1)-1:10*i] == 'b1111111111) begin
+			if (count[10*(i+1)-1:10*i] == 'b111111) begin
 				counter_trigger[i] = 1;
 			end else begin
 				counter_trigger[i] = 0;

@@ -184,6 +184,7 @@ wire 	[`NUM_THREADS-1:0]	df_fifo_as_mem_in;
 wire 	[`NUM_THREADS-1:0]	arya_start_thread;
 wire 	[`NUM_THREADS-1:0]	arya_thread_busy;
 wire 	[`NUM_THREADS-1:0]	arya_thread_done;
+wire 	[`NUM_THREADS-1:0]	fifo_read_done;
 
 
 assign df_fifo_as_mem_in = arya_thread_busy;
@@ -202,25 +203,26 @@ fallthrough_small_fifo #(
 	.reset         (reset),
 	.clk           (clk)
 );
-
-
 infifo_arbiter #(
 	.NUM_THREADS							(`NUM_THREADS)
 )in_arb(
 	.clk									(clk),
+	.reset								(reset),
 	.firstword_in							(begin_pkt),
 	.fifowrite_in							(dropfifo_write && out_wr_int),
 	.enable_cpu_in							(enable_cpu_2),
 	.thread_sel								(current_thread_1),
+	.thread_sel_next						(current_thread),
 	.thread_busy							(arya_thread_busy),
+	.fifo_done								(fifo_read_done),
 	.firstword_out							(df_begin_pkt),
 	.fifowrite_out							(df_fifowrite),
 	.enable_cpu_out							(arya_start_thread),
 	.stop_smallfifo_read					(stop_smallfifo_rd)
 );
 
-wire [`NUM_THREADS*64-1:0] 	rdf_out_data;
-wire [`NUM_THREADS*8-1:0]	rdf_out_ctrl;
+wire [`NUM_THREADS*DATA_WIDTH-1:0] 	rdf_out_data;
+wire [`NUM_THREADS*CTRL_WIDTH-1:0]	rdf_out_ctrl;
 
 assign rdf_out_data = {df_out_data[7],df_out_data[6],df_out_data[5],df_out_data[4],df_out_data[3],df_out_data[2],df_out_data[1],df_out_data[0]};
 assign rdf_out_ctrl = {df_out_ctrl[7],df_out_ctrl[6],df_out_ctrl[5],df_out_ctrl[4],df_out_ctrl[3],df_out_ctrl[2],df_out_ctrl[1],df_out_ctrl[0]};
@@ -235,7 +237,8 @@ outfifo_arbiter out_arb(
 	.fifo_start_read_next					(df_startread),
     .out_data_out							(out_data),
     .out_ctrl_out							(out_ctrl),
-    .out_wr_out								(out_wr)
+    .out_wr_out								(out_wr),
+	.fifo_read_done								(fifo_read_done)
     );
 
 	genvar j;
@@ -252,7 +255,8 @@ outfifo_arbiter out_arb(
 		.en								(1),			// Forcing it to be one.
 		.reset							(reset),
 		.debug_commands					(dbs_cmd[(j+7)*`NUM_THREADS_PER_CORE-1:(j+6)*`NUM_THREADS_PER_CORE]),
-		.debug_on						(dbs_cmd[23]),
+//		.debug_on						(dbs_cmd[23]),
+		.debug_on						(0),
 		// For all threads
 		.start_thread					(arya_start_thread[(j+1)*`NUM_THREADS_PER_CORE-1:j*`NUM_THREADS_PER_CORE]),	//input pulse
 		.thread_busy					(arya_thread_busy[(j+1)*`NUM_THREADS_PER_CORE-1:j*`NUM_THREADS_PER_CORE]),	//output high
