@@ -14,7 +14,7 @@
 // dbs_cmd [10] = unused
 // dbs_cmd [11] = unused
 // dbs_cmd [12] = unused
-// dbs_cmd [13] = unused
+	// dbs_cmd [13] = unused
 // dbs_cmd [23] = datamem_debug_on
 // dbs_cmd [31:24] = manual_trigger
 ////////////////////////////////////
@@ -50,7 +50,7 @@
 `timescale 1ns/1ps
 // defines
 
-`define REGFILE_ADDR_WIDTH 	3
+`define REGFILE_ADDR_WIDTH 	5
 `define MEM_ADDR_WIDTH 			8
 `define INST_ADDR_WIDTH 		8
 `define NUM_COUNTERS 			0
@@ -174,9 +174,11 @@ wire 	[`NUM_THREADS-1:0]	df_startread;
 wire 	[7:0]	df_out_ctrl [0:`NUM_THREADS-1];
 wire 	[63:0]	df_out_data [0:`NUM_THREADS-1];
 wire 	[`NUM_THREADS-1:0]	df_out_wr;
+wire 	[`NUM_THREADS-1:0]	df_out_wr_early;
 wire 	[7:0]	df_datamem_first_addr_out [0:`NUM_THREADS-1];
 wire 	[7:0]	df_datamem_last_addr_out [0:`NUM_THREADS-1];
 wire 	[7:0]	df_datamem_addr_in [0:`NUM_THREADS-1];
+wire 	[7:0]	temp_datamem_addr_in [0:`NUM_THREADS-1];
 wire 	[63:0]	df_datamem_data_in [0:`NUM_THREADS-1];
 wire 	[`NUM_THREADS-1:0]	df_datamem_we_in ;
 wire 	[63:0]	df_datamem_data_out [0:`NUM_THREADS-1];
@@ -234,22 +236,32 @@ outfifo_arbiter out_arb(
     .df_out_data_in							(rdf_out_data),
     .df_out_ctrl_in							(rdf_out_ctrl),
     .df_out_wr_in							(df_out_wr),
+	.df_out_wr_early_in						(df_out_wr_early),
 	.fifo_start_read_next					(df_startread),
     .out_data_out							(out_data),
     .out_ctrl_out							(out_ctrl),
     .out_wr_out								(out_wr),
+	.out_rdy								(out_rdy),
 	.fifo_read_done								(fifo_read_done)
     );
 
+reg [DATA_WIDTH-1:0]arya_datamem_data_in [0:1];
+wire [1:0] arya_thread_id_out [0:1];
+wire [1:0] previous_thread_id_out [0:1];
+
+assign previous_thread_id_out[0] = arya_thread_id_out[0];
+assign previous_thread_id_out[1] = arya_thread_id_out[1];
+
+ 
 	genvar j;
 	generate
 		for (j=0; j<`NUM_CORES; j=j+1) begin : cpu
-		dummy_arya #(
+		arya #(
 		.INST_ADDR_WIDTH				(`INST_ADDR_WIDTH),
 		.DATAPATH_WIDTH					(DATA_WIDTH),
 		.MEM_ADDR_WIDTH					(`MEM_ADDR_WIDTH),
 		.REGFILE_ADDR_WIDTH				(`REGFILE_ADDR_WIDTH),
-		.NUM_THREADS_PER_CORE			(`NUM_THREADS_PER_CORE)
+		.NUM_THREADS			(`NUM_THREADS_PER_CORE)
 		) core (
 		.clk							(clk),
 		.en								(1),			// Forcing it to be one.
@@ -260,14 +272,63 @@ outfifo_arbiter out_arb(
 		// For all threads
 		.start_thread					(arya_start_thread[(j+1)*`NUM_THREADS_PER_CORE-1:j*`NUM_THREADS_PER_CORE]),	//input pulse
 		.thread_busy					(arya_thread_busy[(j+1)*`NUM_THREADS_PER_CORE-1:j*`NUM_THREADS_PER_CORE]),	//output high
-		.thread_done					(arya_thread_done[(j+1)*`NUM_THREADS_PER_CORE-1:j*`NUM_THREADS_PER_CORE])	//output pulse to use as lastword
+		.thread_done					(arya_thread_done[(j+1)*`NUM_THREADS_PER_CORE-1:j*`NUM_THREADS_PER_CORE]),	//output pulse to use as lastword
+		.inst_addr_in					(),
+		.inst_data_in					(),
+		.setup_mem						(),
+		.verify_mem						(),
+		.inst_data_out					(),
+		.datamem_data_in				(arya_datamem_data_in[j]),
+		.datamem_addr_out				({temp_datamem_addr_in[j*4 + 3],temp_datamem_addr_in[j*4 + 2],temp_datamem_addr_in[j*4 + 1],temp_datamem_addr_in[j*4 + 0]}),
+		.datamem_data_out				({df_datamem_data_in[j*4 + 3],df_datamem_data_in[j*4 + 2],df_datamem_data_in[j*4 + 1],df_datamem_data_in[j*4 + 0]}),
+		.datamem_we_out				({df_datamem_we_in[j*4 + 3],df_datamem_we_in[j*4 + 2],df_datamem_we_in[j*4 + 1],df_datamem_we_in[j*4 + 0]}),
+		.thread_id_out					(arya_thread_id_out[j])
 		);
-		end
+		
+
+		end // for
 	endgenerate
+
+	always @(previous_thread_id_out[0]) begin
+	case (previous_thread_id_out[0])
+		'b00: begin
+			arya_datamem_data_in[0] = df_datamem_data_out[0];
+		end
+		'b01: begin
+			arya_datamem_data_in[0] = df_datamem_data_out[1];
+		end
+		'b10: begin
+			arya_datamem_data_in[0] = df_datamem_data_out[2];
+		end
+		'b11: begin
+			arya_datamem_data_in[0] = df_datamem_data_out[3];
+		end
+	endcase
+end
+
+always @(previous_thread_id_out[1]) begin
+	case (previous_thread_id_out[1])
+		'b00: begin
+			arya_datamem_data_in[1] = df_datamem_data_out[4];
+		end
+		'b01: begin
+			arya_datamem_data_in[1] = df_datamem_data_out[5];
+		end
+		'b10: begin
+			arya_datamem_data_in[1] = df_datamem_data_out[6];
+		end
+		'b11: begin
+			arya_datamem_data_in[1] = df_datamem_data_out[7];
+		end
+	endcase
+end
 
 	genvar i;
 	generate
 		for (i=0; i<`NUM_THREADS; i=i+1) begin: fifo
+		
+		
+ assign df_datamem_addr_in[i] = temp_datamem_addr_in[i] + df_datamem_first_addr_out[i];
 		
 		dropfifo  #(
 		.INST_ADDR_WIDTH			(`INST_ADDR_WIDTH),
@@ -285,6 +346,7 @@ outfifo_arbiter out_arb(
 		.rst           				(reset), 
 		.out_fifo      				({df_out_ctrl[i],df_out_data[i]}), 
 		.valid_data    				(df_out_wr[i]),
+		.valid_data_early			(df_out_wr_early[i]),
 		.datamem_first_addr			(df_datamem_first_addr_out[i]),
 		.datamem_last_addr			(df_datamem_last_addr_out[i]),
 		.datamem_addr_in			(df_datamem_addr_in[i]),
@@ -292,6 +354,7 @@ outfifo_arbiter out_arb(
 		.datamem_we					(df_datamem_we_in[i]),
 		.datamem_data_out			(df_datamem_data_out[i]),
 		.fifo_as_mem				(df_fifo_as_mem_in[i])			// Signal to muxes
+		//.fifo_as_mem				(0)
 		);	
 		end
 	endgenerate

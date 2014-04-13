@@ -27,6 +27,7 @@ module outfifo_arbiter # (
     input [NUM_THREADS*64-1:0] 	df_out_data_in,
     input [NUM_THREADS*8-1:0] 	df_out_ctrl_in,
     input [NUM_THREADS-1:0]		df_out_wr_in,
+    input [NUM_THREADS-1:0]		df_out_wr_early_in,
 	input out_rdy,
     output reg [63:0] out_data_out,
     output reg [7:0] out_ctrl_out,
@@ -54,6 +55,9 @@ module outfifo_arbiter # (
 	reg [NUM_THREADS-1:0]	fifo_rdy_reset;
 	reg [NUM_THREADS-1:0]	fifo_read_done_next;
 	reg delay_reset_next, delay_reset;
+	reg out_rdy_delayed;
+	wire out_rdy_d;
+	assign out_rdy_d = out_rdy_delayed || out_rdy;
 	
 			always @(*) begin
 		fifo_start_read_next = fifo_start_read;
@@ -76,6 +80,12 @@ module outfifo_arbiter # (
 				end
 			end
 			ZERO: begin
+				// to avoid glitch
+				fifo_start_read_next[1] = 0;
+				fifo_rdy_reset[1] = 0;
+				fifo_read_done_next[0] = 0;  
+				delay_reset_next = 0;
+				
 				delay_reset_next = 0;
 				fifo_read_done_next[7] = 0;
 				fifo_start_read_next[0] = 0;
@@ -84,7 +94,7 @@ module outfifo_arbiter # (
 				out_ctrl_out = df_out_ctrl_in[7:0];
 				out_wr_out	= df_out_wr_in[0];
 				if (delayed_enough) begin
-					if (fifo_rdy[1] && ~df_out_wr_in[0]) begin
+					if (fifo_rdy[1] && ~df_out_wr_early_in[0] && out_rdy_d) begin
 						state_next = ONE;
 						fifo_start_read_next[1] = 1;
 						fifo_rdy_reset[1] = 1;
@@ -94,6 +104,12 @@ module outfifo_arbiter # (
 				end
 			end
 			ONE: begin
+				// to avoid glitch
+				fifo_start_read_next[2] = 0;
+				fifo_rdy_reset[2] = 0;
+				fifo_read_done_next[1] = 0;  
+				delay_reset_next = 0;
+				
 				delay_reset_next = 0;
 				fifo_read_done_next[0] = 0;
 				fifo_start_read_next[1] = 0;
@@ -102,7 +118,7 @@ module outfifo_arbiter # (
 				out_ctrl_out = df_out_ctrl_in[15:8];
 				out_wr_out	= df_out_wr_in[1];
 				if (delayed_enough) begin
-					if (fifo_rdy[2] && ~df_out_wr_in[1]) begin
+					if (fifo_rdy[2] && ~df_out_wr_early_in[1] && out_rdy_d) begin
 						state_next = TWO;
 						fifo_start_read_next[2] = 1;
 						fifo_rdy_reset[2] = 1;
@@ -113,6 +129,11 @@ module outfifo_arbiter # (
 			
 			end
 			TWO: begin
+				// to avoid glitch
+				fifo_start_read_next[3] = 0;
+				fifo_rdy_reset[3] = 0;
+				fifo_read_done_next[2] = 0;  
+				delay_reset_next = 0;
 				delay_reset_next = 0;
 				fifo_read_done_next[1] = 0;
 				fifo_start_read_next[2] = 0;
@@ -121,7 +142,7 @@ module outfifo_arbiter # (
 				out_ctrl_out = df_out_ctrl_in[23:16];
 				out_wr_out	= df_out_wr_in[2];
 				if (delayed_enough) begin
-					if (fifo_rdy[3] && ~df_out_wr_in[2]) begin
+					if (fifo_rdy[3] && ~df_out_wr_early_in[2] && out_rdy_d) begin
 						state_next = THREE;
 						fifo_start_read_next[3] = 1;
 						fifo_rdy_reset[3] = 1;
@@ -131,6 +152,11 @@ module outfifo_arbiter # (
 				end
 			end
 			THREE: begin
+				// to avoid glitch
+				fifo_start_read_next[4] = 0;
+				fifo_rdy_reset[4] = 0;
+				fifo_read_done_next[3] = 0;  
+				delay_reset_next = 0;
 				delay_reset_next = 0;
 				fifo_read_done_next[2] = 0;
 				fifo_start_read_next[3] = 0;
@@ -139,7 +165,7 @@ module outfifo_arbiter # (
 				out_ctrl_out = df_out_ctrl_in[31:24];
 				out_wr_out	= df_out_wr_in[3];
 				if (delayed_enough) begin
-					if (fifo_rdy[4] && ~df_out_wr_in[3]) begin
+					if (fifo_rdy[4] && ~df_out_wr_early_in[3] && out_rdy_d) begin
 						state_next = FOUR;
 						fifo_start_read_next[4] = 1;
 						fifo_rdy_reset[4] = 1;
@@ -149,6 +175,11 @@ module outfifo_arbiter # (
 				end
 			end
 			FOUR: begin
+				// to avoid glitch
+				fifo_start_read_next[5] = 0;
+				fifo_rdy_reset[5] = 0;
+				fifo_read_done_next[4] = 0;  
+				delay_reset_next = 0;
 				delay_reset_next = 0;
 				fifo_read_done_next[3] = 0;
 				fifo_start_read_next[4] = 0;
@@ -157,7 +188,7 @@ module outfifo_arbiter # (
 				out_ctrl_out = df_out_ctrl_in[39:32];
 				out_wr_out	= df_out_wr_in[4];
 				if (delayed_enough) begin
-					if (fifo_rdy[5] && ~df_out_wr_in[4]) begin
+					if (fifo_rdy[5] && ~df_out_wr_early_in[4] && out_rdy_d) begin
 						state_next = FIVE;
 						fifo_start_read_next[5] = 1;
 						fifo_rdy_reset[5] = 1;
@@ -167,6 +198,12 @@ module outfifo_arbiter # (
 				end
 			end
 			FIVE: begin
+				// to avoid glitch
+				fifo_start_read_next[6] = 0;
+				fifo_rdy_reset[6] = 0;
+				fifo_read_done_next[5] = 0;  
+				delay_reset_next = 0;
+				
 				delay_reset_next = 0;
 				fifo_read_done_next[4] = 0;
 				fifo_start_read_next[5] = 0;
@@ -175,7 +212,7 @@ module outfifo_arbiter # (
 				out_ctrl_out = df_out_ctrl_in[47:40];
 				out_wr_out	= df_out_wr_in[5];
 				if (delayed_enough) begin
-					if (fifo_rdy[6] && ~df_out_wr_in[5]) begin
+					if (fifo_rdy[6] && ~df_out_wr_early_in[5] && out_rdy_d) begin
 						state_next = SIX;
 						fifo_start_read_next[6] = 1;
 						fifo_rdy_reset[6] = 1;
@@ -185,6 +222,12 @@ module outfifo_arbiter # (
 				end
 			end
 			SIX: begin
+				// to avoid glitch
+				fifo_start_read_next[7] = 0;
+				fifo_rdy_reset[7] = 0;
+				fifo_read_done_next[6] = 0;  
+				delay_reset_next = 0;
+				
 				delay_reset_next = 0;
 				fifo_read_done_next[5] = 0;
 				fifo_start_read_next[6] = 0;
@@ -193,7 +236,7 @@ module outfifo_arbiter # (
 				out_ctrl_out = df_out_ctrl_in[55:48];
 				out_wr_out	= df_out_wr_in[6];
 				if (delayed_enough) begin
-					if (fifo_rdy[7] && ~df_out_wr_in[6]) begin
+					if (fifo_rdy[7] && ~df_out_wr_early_in[6] && out_rdy_d) begin
 						state_next = SEVEN;
 						fifo_start_read_next[7] = 1;
 						fifo_rdy_reset[7] = 1;
@@ -203,6 +246,12 @@ module outfifo_arbiter # (
 				end
 			end
 			SEVEN: begin
+				// to avoid glitch
+				fifo_start_read_next[0] = 0;
+				fifo_rdy_reset[0] = 0;
+				fifo_read_done_next[7] = 0;  
+				delay_reset_next = 0;
+				
 				delay_reset_next = 0;
 				fifo_read_done_next[6] = 0;
 				fifo_start_read_next[7] = 0;
@@ -211,7 +260,7 @@ module outfifo_arbiter # (
 				out_ctrl_out = df_out_ctrl_in[63:56];
 				out_wr_out	= df_out_wr_in[7];
 				if (delayed_enough) begin
-					if (fifo_rdy[0] && ~df_out_wr_in[7]) begin
+					if (fifo_rdy[0] && ~df_out_wr_early_in[7] && out_rdy_d) begin
 						state_next = ZERO;
 						fifo_start_read_next[0] = 1;
 						fifo_rdy_reset[0] = 1;
@@ -234,6 +283,7 @@ module outfifo_arbiter # (
 		if (reset) begin
 			state <= RESET;
 			fifo_start_read <=0;
+		
 			fifo_read_done <= 0;
 		end 
 		else begin// if !reset	
@@ -247,9 +297,10 @@ module outfifo_arbiter # (
 	generate
 	for (i=0; i< NUM_THREADS; i=i+1) begin : sequential
 	always @(posedge clk) begin
-    if (reset) begin
-        fifo_rdy[i] <= 0;
-    end else  begin
+	if (reset) begin
+		fifo_rdy[i] <= 0;
+	end
+	else begin
 		if (fifo_rdy_reset[i]) begin
 				fifo_rdy[i] <= 0;
 			end // if (fifo_3_rdy_reset)
@@ -258,7 +309,7 @@ module outfifo_arbiter # (
 				fifo_rdy[i] <= 1;
 			end // if (thread_3_done)
 		end // else	
-	end // if ~reset
+		end // if ~reset
 	end // always 
 	end// for
 	endgenerate// endgenerate
@@ -268,7 +319,9 @@ module outfifo_arbiter # (
 	
 	if (reset) begin
 		delay_counter <= 0;
+		out_rdy_delayed <= 0;
 	end else begin
+		out_rdy_delayed <= out_rdy;
 		delay_reset <= delay_reset_next;
 			if (delay_reset_next) begin
 				delay_counter 	<= 0;

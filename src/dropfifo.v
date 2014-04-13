@@ -33,7 +33,7 @@ module FD8CE_HXILINX_dropfifo(Q, C, CE, CLR, D);
    reg    [7:0]       Q;
    
    always @(posedge C or posedge CLR)
-     begin
+		begin
 	if (CLR)
 	  Q <= 8'b0000_0000;
 	else if (CE)
@@ -133,6 +133,7 @@ module dropfifo #(
                 rst, 
                 out_fifo, 
                 valid_data,
+				valid_data_early,
 				datamem_first_addr,
 				datamem_last_addr,
 				datamem_addr_in,
@@ -155,8 +156,10 @@ module dropfifo #(
 	input 	datamem_we;
 	input fifo_as_mem;
 	
+	
    output [71:0] out_fifo;
    output valid_data;
+   output valid_data_early;
    output [MEM_ADDR_WIDTH-1:0]	datamem_first_addr;
    output [MEM_ADDR_WIDTH-1:0]	datamem_last_addr;
    output [DATAPATH_WIDTH-1:0]	datamem_data_out;
@@ -190,6 +193,8 @@ wire	[DATAPATH_WIDTH-1:0]	portb_data_out;
 wire 							enable_mem = 1'b1;
    
 wire [7:0]							portb_ctrl_out;
+
+assign valid_data_early = XLXN_40;
    FD XLXI_1 (.C(clk), 
               .D(firstword), 
               .Q(XLXN_11));
@@ -246,7 +251,8 @@ wire [7:0]							portb_ctrl_out;
                 .D(XLXN_40), 
                 .Q(valid_data));
    defparam XLXI_11.INIT = 1'b0;
-   OR2 XLXI_12 (.I0(XLXN_12), 
+   // hack hack hack
+   OR2 XLXI_12 (.I0(lastword), 
                 .I1(XLXN_11), 
                 .O(XLXN_13));
    AND2B1 XLXI_13 (.I0(XLXN_25), 
