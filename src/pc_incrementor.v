@@ -21,7 +21,7 @@
 
 
 module pc_incrementor
-	#(parameter INST_ADDR_WIDTH = 8)
+	#(parameter INST_ADDR_WIDTH = 6)
 
    (input clk,
 	 input en,
@@ -33,13 +33,17 @@ module pc_incrementor
    
 always @ (posedge clk)
  begin : COUNTER 
-   if (reset == 1'b1) begin
-     pc_out <=   'd0;
+   if (reset) begin
+     pc_out <=   'b0;
    end
-   else if (en == 1'b1) begin
-		if (wen) 	pc_out[INST_ADDR_WIDTH + 1 :2] <= pc_in;
-		else 			pc_out 	<= pc_out + 1;
-   end
-end
+   else if (en) begin
+		if (wen) begin
+			pc_out[INST_ADDR_WIDTH + 1 :2] <= pc_in;
+		end
+		else begin
+			pc_out 	<= pc_out + 'b1;
+		end // else
+   end // else if not enable
+end // always
 	
 endmodule

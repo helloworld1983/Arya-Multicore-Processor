@@ -1,64 +1,17 @@
-//////////////////////////////////
-////// SOFTWARE REGS ////////////
-//////////////////////////////////
-// dbs_cmd [0] 	= send a reset
-// dbs_cmd [1] 	= setup memory
-// dbs_cmd [2] 	= verify mem
-// dbs_cmd [3]  = set debug mode on
-// dbs_cmd [4] 	= enable stepinto
-// dbs_cmd [5] 	= stepvalue bit 0
-// dbs_cmd [6] 	= stepvalue bit 1
-// dbs_cmd [7] 	= stepvalue bit 2
-// dbs_cmd [8] 	= reset step count
-// dbs_cmd [9] 	= enable mem
-// dbs_cmd [10] = unused
-// dbs_cmd [11] = unused
-// dbs_cmd [12] = unused
-	// dbs_cmd [13] = unused
-// dbs_cmd [23] = datamem_debug_on
-// dbs_cmd [31:24] = manual_trigger
-////////////////////////////////////
-// [31:0] 	dbs_input_data_high 	= upper 32 bits of data to program memory
-////////////////////////////////////
-// [31:0] 	dbs_input_data_low 	= lower 32 bits of data to program memory
-////////////////////////////////////
-// [31:0] 	dbs_input_data_addr 			= memory address to program
-////////////////////////////////////
-// [31:0] 	dbs_input_inst_high 	= upper 32 bits of data to program memory
-////////////////////////////////////
-// [31:0] 	dbs_input_inst_low 	= lower 32 bits of data to program memory
-////////////////////////////////////
-// [31:0] 	dbs_input_inst_addr 			= memory address to program
-///////////////////////////////////
-
-
-/////////////////////////////////////
-///// HARDWARE REGS//////////////////
-////////////////////////////////////
-// [31:0]	dbh_output_data_high		= upper 32 bits of data read from mem
-/////////////////////////////////////
-// [31:0]	dbh_output_data_low		= lower 32 bits of data read from mem
-////////////////////////////////////
-// [31:0]	dbh_output_inst_high		= upper 32 bits of data read from mem
-/////////////////////////////////////
-// [31:0]	dbh_output_inst_low		= lower 32 bits of data read from mem
-////////////////////////////////////
-// [31:0]	dbh_step_count		 	= Number of steps the simulation has run
-////////////////////////////////////
-
 
 `timescale 1ns/1ps
 // defines
 
 `define REGFILE_ADDR_WIDTH 	5
 `define MEM_ADDR_WIDTH 			8
-`define INST_ADDR_WIDTH 		8
+`define INST_ADDR_WIDTH 		6
 `define NUM_COUNTERS 			0
-`define NUM_SOFTWARE_REGS 		1
-`define NUM_HARDWARE_REGS 		0
+`define NUM_SOFTWARE_REGS 		6
+`define NUM_HARDWARE_REGS 		5
 `define NUM_THREADS				8
 `define	NUM_CORES				2
 `define NUM_THREADS_PER_CORE	4
+`define INST_WIDTH				32
 
 module ids
 #(
@@ -114,10 +67,7 @@ reg                           	out_wr_int;
 
 reg			         			out_wr_int_next;
 
-wire [31:0] 					memory_output_data_high;
-wire [31:0] 					memory_output_data_low;
-wire [31:0] 					memory_output_inst_high;
-wire [31:0] 					memory_output_inst_low;
+
 reg								enable_cpu_next, enable_cpu, enable_cpu_1, enable_cpu_2;
 reg								reset_cpu_next, reset_cpu;
 wire							final_dropfifo_write;
@@ -127,26 +77,31 @@ reg								dropfifo_write_2;
 reg	[2:0]						current_thread_next, current_thread, current_thread_1;
 
 
+wire [(`INST_ADDR_WIDTH - 1) + 2:0]				    	input_inst_addr[0:1];
+wire [31:0]				    	input_inst[0:1];
+wire    cmd_setup_mem [0:1];
+wire    cmd_verify_mem [0:1];
+wire    cmd_debug_on [0:1];
+
+reg [31:0]                 num_packets_in_next;
+wire [31:0] 					halt_counter[0:1];
+wire [31:0]						output_inst[0:1];
+
 // software registers 
-wire [31:0]                   	dbs_cmd;
-/*
-wire [31:0]                   	dbs_input_inst[0:1];
-wire [31:0]				    	dbs_input_inst_addr;
-wire [31:0]						dbs_input_cam_entry;
-wire [31:0]						dbs_input_dram_entry;
-wire [31:0]						dbs_input_cam_dram_addr;
-*/
+wire [31:0]                dbs_cmd_0;
+wire [31:0]                dbs_cmd_1;
+wire [31:0]				    	dbs_input_inst_addr_0;
+wire [31:0]				    	dbs_input_inst_0;
+wire [31:0]				    	dbs_input_inst_addr_1;
+wire [31:0]				    	dbs_input_inst_1;
+
 
 // hardware registers
-/*
-reg [31:0]                    	dbh_output_inst[0:1];
-reg [31:0]						dbh_output_cam_entry;
-reg [31:0]						dbh_output_dram_entry;
-reg [31:0]						dbh_datamem_data_high[0:`NUM_THREADS-1];
-reg [31:0]						dbh_datamem_data_low[0:`NUM_THREADS-1];
-reg	[31:0]						dbh_datamem_addr[0:`NUM_THREADS-1];
-*/
-
+reg [31:0]                    	dbh_output_inst_0;
+reg [31:0]                    	dbh_output_inst_1;
+reg [31:0]                      dbh_num_packets_in;
+reg [31:0]                      dbh_halt_counter_0;
+reg [31:0]                      dbh_halt_counter_1;
 
 // internal state
 reg [1:0]                     	state, state_next;
@@ -161,6 +116,19 @@ parameter								PROCESS = 2'b11;
 
 
 //------------------------- Local assignments -------------------------------
+
+
+assign input_inst_addr[0] = dbs_input_inst_addr_0[(`INST_ADDR_WIDTH-1) + 2:0];
+assign input_inst[0] = dbs_input_inst_0;
+assign cmd_setup_mem[0] = dbs_cmd_0[1];
+assign cmd_verify_mem[0] = dbs_cmd_0[2];
+assign cmd_debug_on[0] = dbs_cmd_0[23];
+
+assign input_inst_addr[1] = dbs_input_inst_addr_1[(`INST_ADDR_WIDTH-1) + 2:0];
+assign input_inst[1] = dbs_input_inst_1;
+assign cmd_setup_mem[1] = dbs_cmd_1[1];
+assign cmd_verify_mem[1] = dbs_cmd_1[2];
+assign cmd_debug_on[1] = dbs_cmd_1[23];
 
 assign in_rdy     = !in_fifo_nearly_full;
 	
@@ -245,12 +213,16 @@ outfifo_arbiter out_arb(
 	.fifo_read_done								(fifo_read_done)
     );
 
-reg [DATA_WIDTH-1:0]arya_datamem_data_in [0:1];
+wire [DATA_WIDTH-1:0]arya_datamem_data_in [0:1];
 wire [1:0] arya_thread_id_out [0:1];
-wire [1:0] previous_thread_id_out [0:1];
+wire [1:0] previous_thread_id_out_0;
+wire [1:0] previous_thread_id_out_1;
 
-assign previous_thread_id_out[0] = arya_thread_id_out[0];
-assign previous_thread_id_out[1] = arya_thread_id_out[1];
+wire [31:0] output_inst_high [0:1];
+wire [31:0] output_inst_low [0:1];
+
+assign previous_thread_id_out_0 = arya_thread_id_out[0];
+assign previous_thread_id_out_1 = arya_thread_id_out[1];
 
  
 	genvar j;
@@ -261,64 +233,92 @@ assign previous_thread_id_out[1] = arya_thread_id_out[1];
 		.DATAPATH_WIDTH					(DATA_WIDTH),
 		.MEM_ADDR_WIDTH					(`MEM_ADDR_WIDTH),
 		.REGFILE_ADDR_WIDTH				(`REGFILE_ADDR_WIDTH),
-		.NUM_THREADS			(`NUM_THREADS_PER_CORE)
+		.NUM_THREADS			(`NUM_THREADS_PER_CORE),
+		.INST_WIDTH				(`INST_WIDTH)
 		) core (
 		.clk							(clk),
 		.en								(1),			// Forcing it to be one.
 		.reset							(reset),
-		.debug_commands					(dbs_cmd[(j+7)*`NUM_THREADS_PER_CORE-1:(j+6)*`NUM_THREADS_PER_CORE]),
-//		.debug_on						(dbs_cmd[23]),
-		.debug_on						(0),
+		//.debug_commands					(dbs_cmd[(j+7)*`NUM_THREADS_PER_CORE-1:(j+6)*`NUM_THREADS_PER_CORE]),
+        .debug_commands                 (0),
+		.debug_on						(cmd_debug_on[j]),
+		//.debug_on						(0),
 		// For all threads
 		.start_thread					(arya_start_thread[(j+1)*`NUM_THREADS_PER_CORE-1:j*`NUM_THREADS_PER_CORE]),	//input pulse
 		.thread_busy					(arya_thread_busy[(j+1)*`NUM_THREADS_PER_CORE-1:j*`NUM_THREADS_PER_CORE]),	//output high
 		.thread_done					(arya_thread_done[(j+1)*`NUM_THREADS_PER_CORE-1:j*`NUM_THREADS_PER_CORE]),	//output pulse to use as lastword
-		.inst_addr_in					(),
-		.inst_data_in					(),
-		.setup_mem						(),
-		.verify_mem						(),
-		.inst_data_out					(),
+		.inst_addr_in					(input_inst_addr[j]),
+		.inst_data_in					(input_inst[j]),
+		.setup_mem						(cmd_setup_mem[j]),
+		.verify_mem						(cmd_verify_mem[j]),
+		.inst_data_out					(output_inst[j]),
 		.datamem_data_in				(arya_datamem_data_in[j]),
 		.datamem_addr_out				({temp_datamem_addr_in[j*4 + 3],temp_datamem_addr_in[j*4 + 2],temp_datamem_addr_in[j*4 + 1],temp_datamem_addr_in[j*4 + 0]}),
 		.datamem_data_out				({df_datamem_data_in[j*4 + 3],df_datamem_data_in[j*4 + 2],df_datamem_data_in[j*4 + 1],df_datamem_data_in[j*4 + 0]}),
-		.datamem_we_out				({df_datamem_we_in[j*4 + 3],df_datamem_we_in[j*4 + 2],df_datamem_we_in[j*4 + 1],df_datamem_we_in[j*4 + 0]}),
-		.thread_id_out					(arya_thread_id_out[j])
+		.datamem_we_out				    ({df_datamem_we_in[j*4 + 3],df_datamem_we_in[j*4 + 2],df_datamem_we_in[j*4 + 1],df_datamem_we_in[j*4 + 0]}),
+		.thread_id_out					(arya_thread_id_out[j]),
+		.halt_counter_out				(halt_counter[j])
 		);
 		
 
 		end // for
 	endgenerate
+	
+wire 	[DATA_WIDTH-1:0]	df_datamem_data_out_0;
+wire 	[DATA_WIDTH-1:0]	df_datamem_data_out_1;
+wire 	[DATA_WIDTH-1:0]	df_datamem_data_out_2;
+wire 	[DATA_WIDTH-1:0]	df_datamem_data_out_3;
+wire 	[DATA_WIDTH-1:0]	df_datamem_data_out_4;
+wire 	[DATA_WIDTH-1:0]	df_datamem_data_out_5;
+wire 	[DATA_WIDTH-1:0]	df_datamem_data_out_6;
+wire 	[DATA_WIDTH-1:0]	df_datamem_data_out_7;
 
-	always @(previous_thread_id_out[0]) begin
-	case (previous_thread_id_out[0])
+assign df_datamem_data_out_0 = df_datamem_data_out[0];
+assign df_datamem_data_out_1 = df_datamem_data_out[1];
+assign df_datamem_data_out_2 = df_datamem_data_out[2];
+assign df_datamem_data_out_3 = df_datamem_data_out[3];
+assign df_datamem_data_out_4 = df_datamem_data_out[4];
+assign df_datamem_data_out_5 = df_datamem_data_out[5];
+assign df_datamem_data_out_6 = df_datamem_data_out[6];
+assign df_datamem_data_out_7 = df_datamem_data_out[7];
+
+reg [DATA_WIDTH-1:0] arya_datamem_data_in_0;
+reg [DATA_WIDTH-1:0] arya_datamem_data_in_1;
+
+assign arya_datamem_data_in[0] = arya_datamem_data_in_0;
+assign arya_datamem_data_in[1] = arya_datamem_data_in_1;
+
+	always @(*) begin
+	case (previous_thread_id_out_0)
 		'b00: begin
-			arya_datamem_data_in[0] = df_datamem_data_out[0];
+			arya_datamem_data_in_0 = df_datamem_data_out_0;
 		end
 		'b01: begin
-			arya_datamem_data_in[0] = df_datamem_data_out[1];
+			arya_datamem_data_in_0 = df_datamem_data_out_1;
 		end
 		'b10: begin
-			arya_datamem_data_in[0] = df_datamem_data_out[2];
+			arya_datamem_data_in_0 = df_datamem_data_out_2;
 		end
 		'b11: begin
-			arya_datamem_data_in[0] = df_datamem_data_out[3];
+			arya_datamem_data_in_0 = df_datamem_data_out_3;
 		end
 	endcase
 end
 
-always @(previous_thread_id_out[1]) begin
-	case (previous_thread_id_out[1])
+
+always @(*) begin
+	case (previous_thread_id_out_1)
 		'b00: begin
-			arya_datamem_data_in[1] = df_datamem_data_out[4];
+			arya_datamem_data_in_1 = df_datamem_data_out_4;
 		end
 		'b01: begin
-			arya_datamem_data_in[1] = df_datamem_data_out[5];
+			arya_datamem_data_in_1 = df_datamem_data_out_5;
 		end
 		'b10: begin
-			arya_datamem_data_in[1] = df_datamem_data_out[6];
+			arya_datamem_data_in_1 = df_datamem_data_out_6;
 		end
 		'b11: begin
-			arya_datamem_data_in[1] = df_datamem_data_out[7];
+			arya_datamem_data_in_1 = df_datamem_data_out_7;
 		end
 	endcase
 end
@@ -327,8 +327,7 @@ end
 	generate
 		for (i=0; i<`NUM_THREADS; i=i+1) begin: fifo
 		
-		
- assign df_datamem_addr_in[i] = temp_datamem_addr_in[i] + df_datamem_first_addr_out[i];
+         assign df_datamem_addr_in[i] = temp_datamem_addr_in[i] + df_datamem_first_addr_out[i];
 		
 		dropfifo  #(
 		.INST_ADDR_WIDTH			(`INST_ADDR_WIDTH),
@@ -387,10 +386,10 @@ end
 	.counter_decrement(),
 
 	// --- SW regs interface
-	.software_regs    ({dbs_cmd}),
+	.software_regs    ({dbs_input_inst_1,dbs_input_inst_addr_1,dbs_input_inst_0,dbs_input_inst_addr_0,dbs_cmd_1,dbs_cmd_0}),
 
 	// --- HW regs interface
-	.hardware_regs    (),
+	.hardware_regs    ({dbh_halt_counter_1,dbh_halt_counter_0, dbh_num_packets_in, dbh_output_inst_1,dbh_output_inst_0}),
 
 
 	.clk              (clk),
@@ -409,6 +408,7 @@ always @(*) begin
 	reset_cpu_next = reset_cpu;
 	dropfifo_write_next = dropfifo_write;
 	current_thread_next = current_thread;
+    num_packets_in_next = dbh_num_packets_in;
 	
 	if (!in_fifo_empty && out_rdy) begin
 		out_wr_int_next = 1;
@@ -442,6 +442,7 @@ always @(*) begin
 				header_counter_next = 0;
 				enable_cpu_next = 1;
 				current_thread_next = current_thread_next + 1;
+                num_packets_in_next = num_packets_in_next + 1;
 			end // if (in_fifo_ctrl_p !=0)
 			end // PAYLOAD
 		endcase // case(state)
@@ -463,7 +464,12 @@ always @(posedge clk) begin
 		dropfifo_write_1 <= 0;
 		dropfifo_write_2 <= 0;
 		current_thread <= 0;
-		current_thread_1 <= 0; 
+		current_thread_1 <= 0;
+        dbh_output_inst_0 <= 0;
+        dbh_output_inst_1 <= 0;
+        dbh_num_packets_in <= 0;
+        dbh_halt_counter_0 <= 0;
+		  dbh_halt_counter_1 <= 0;
 	end
 	else begin
 		//if (dbs_cmd[0]) dbh_step_count <= 0;
@@ -485,6 +491,11 @@ always @(posedge clk) begin
 		dropfifo_write_2 <= dropfifo_write_1;
 		current_thread <= current_thread_next;
 		current_thread_1 <= current_thread;
+        dbh_output_inst_0 <= output_inst[0];
+        dbh_output_inst_1 <= output_inst[1];
+        dbh_num_packets_in <= num_packets_in_next;
+        dbh_halt_counter_0 <= halt_counter[0];
+		  dbh_halt_counter_1 <= halt_counter[1];
 			
 	end // else: !if(reset)
 end // always @ (posedge clk)   

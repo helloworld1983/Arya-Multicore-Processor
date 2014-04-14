@@ -30,14 +30,14 @@
 // supported by Xilinx, Mentor Graphics and Synplicity synthesis
 // tools. Ensure they are correct for your synthesis tool(s).
 
-// You must compile the wrapper file inst_mem.v when simulating
-// the core, inst_mem. When compiling the wrapper file, be sure to
+// You must compile the wrapper file small_inst_mem.v when simulating
+// the core, small_inst_mem. When compiling the wrapper file, be sure to
 // reference the XilinxCoreLib Verilog simulation library. For detailed
 // instructions, please refer to the "CORE Generator Help".
 
 `timescale 1ns/1ps
 
-module inst_mem(
+module small_inst_mem(
 	clka,
 	dina,
 	addra,
@@ -51,21 +51,21 @@ module inst_mem(
 
 
 input clka;
-input [63 : 0] dina;
-input [9 : 0] addra;
+input [31 : 0] dina;
+input [7 : 0] addra;
 input [0 : 0] wea;
-output [63 : 0] douta;
+output [31 : 0] douta;
 input clkb;
-input [63 : 0] dinb;
-input [9 : 0] addrb;
+input [31 : 0] dinb;
+input [7 : 0] addrb;
 input [0 : 0] web;
-output [63 : 0] doutb;
+output [31 : 0] doutb;
 
 // synthesis translate_off
 
       BLK_MEM_GEN_V2_8 #(
-		.C_ADDRA_WIDTH(10),
-		.C_ADDRB_WIDTH(10),
+		.C_ADDRA_WIDTH(8),
+		.C_ADDRB_WIDTH(8),
 		.C_ALGORITHM(1),
 		.C_BYTE_SIZE(9),
 		.C_COMMON_CLK(0),
@@ -88,10 +88,10 @@ output [63 : 0] doutb;
 		.C_MEM_TYPE(2),
 		.C_MUX_PIPELINE_STAGES(0),
 		.C_PRIM_TYPE(1),
-		.C_READ_DEPTH_A(1024),
-		.C_READ_DEPTH_B(1024),
-		.C_READ_WIDTH_A(64),
-		.C_READ_WIDTH_B(64),
+		.C_READ_DEPTH_A(256),
+		.C_READ_DEPTH_B(256),
+		.C_READ_WIDTH_A(32),
+		.C_READ_WIDTH_B(32),
 		.C_SIM_COLLISION_CHECK("ALL"),
 		.C_SINITA_VAL("0"),
 		.C_SINITB_VAL("0"),
@@ -102,12 +102,12 @@ output [63 : 0] doutb;
 		.C_USE_RAMB16BWER_RST_BHV(0),
 		.C_WEA_WIDTH(1),
 		.C_WEB_WIDTH(1),
-		.C_WRITE_DEPTH_A(1024),
-		.C_WRITE_DEPTH_B(1024),
+		.C_WRITE_DEPTH_A(256),
+		.C_WRITE_DEPTH_B(256),
 		.C_WRITE_MODE_A("WRITE_FIRST"),
 		.C_WRITE_MODE_B("WRITE_FIRST"),
-		.C_WRITE_WIDTH_A(64),
-		.C_WRITE_WIDTH_B(64),
+		.C_WRITE_WIDTH_A(32),
+		.C_WRITE_WIDTH_B(32),
 		.C_XDEVICEFAMILY("virtex2p"))
 	inst (
 		.CLKA(clka),
@@ -134,7 +134,7 @@ output [63 : 0] doutb;
 
 // XST black box declaration
 // box_type "black_box"
-// synthesis attribute box_type of inst_mem is "black_box"
+// synthesis attribute box_type of small_inst_mem is "black_box"
 
 endmodule
 

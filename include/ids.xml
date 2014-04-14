@@ -7,9 +7,59 @@
 	<nf:blocksize>64</nf:blocksize>
 	<nf:registers>
 		<nf:register>
-		  <nf:name>dbs_cmd</nf:name>
+		  <nf:name>dbs_cmd_0</nf:name>
 			<nf:description>Upper 32 bits of Pattern</nf:description>
 			<nf:type>generic_software32</nf:type>
+		</nf:register>
+		<nf:register>
+		  <nf:name>dbs_cmd_1</nf:name>
+			<nf:description>Upper 32 bits of Pattern</nf:description>
+			<nf:type>generic_software32</nf:type>
+		</nf:register>
+		<nf:register>
+		  <nf:name>dbs_input_inst_addr_0</nf:name>
+			<nf:description>Upper 32 bits of Pattern</nf:description>
+			<nf:type>generic_software32</nf:type>
+		</nf:register>
+		<nf:register>
+		  <nf:name>dbs_input_inst_0</nf:name>
+			<nf:description>Upper 32 bits of Pattern</nf:description>
+			<nf:type>generic_software32</nf:type>
+		</nf:register>
+		<nf:register>
+		  <nf:name>dbs_input_inst_addr_1</nf:name>
+			<nf:description>Upper 32 bits of Pattern</nf:description>
+			<nf:type>generic_software32</nf:type>
+		</nf:register>
+		<nf:register>
+		  <nf:name>dbs_input_inst_1</nf:name>
+			<nf:description>Upper 32 bits of Pattern</nf:description>
+			<nf:type>generic_software32</nf:type>
+		</nf:register>
+		<nf:register>
+		  <nf:name>dbh_output_inst_0</nf:name>
+			<nf:description>Upper 32 bits of Pattern</nf:description>
+			<nf:type>generic_hardware32</nf:type>
+		</nf:register>
+		<nf:register>
+		  <nf:name>dbh_output_inst_1</nf:name>
+			<nf:description>Upper 32 bits of Pattern</nf:description>
+			<nf:type>generic_hardware32</nf:type>
+		</nf:register>
+		<nf:register>
+		  <nf:name>dbh_num_packets_in</nf:name>
+			<nf:description>Upper 32 bits of Pattern</nf:description>
+			<nf:type>generic_hardware32</nf:type>
+		</nf:register>
+		<nf:register>
+		  <nf:name>dbh_halt_counter_0</nf:name>
+			<nf:description>Upper 32 bits of Pattern</nf:description>
+			<nf:type>generic_hardware32</nf:type>
+		</nf:register>
+		<nf:register>
+		  <nf:name>dbh_halt_counter_1</nf:name>
+			<nf:description>Upper 32 bits of Pattern</nf:description>
+			<nf:type>generic_hardware32</nf:type>
 		</nf:register>
 	</nf:registers>
 </nf:module>

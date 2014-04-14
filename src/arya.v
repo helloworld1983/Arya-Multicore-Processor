@@ -22,8 +22,9 @@
 module arya #(
 	parameter 	REGFILE_ADDR_WIDTH 	= 5,
 	parameter 	DATAPATH_WIDTH	 	= 64,
+	parameter	INST_WIDTH = 32,
 	parameter 	MEM_ADDR_WIDTH		= 8,
-	parameter 	INST_ADDR_WIDTH	= 8,	
+	parameter 	INST_ADDR_WIDTH	= 6,	
 	parameter	THREAD_BITS			=	2,
 	parameter 	NUM_THREADS			=	2**THREAD_BITS,
 	parameter	NUM_THREADS_ARYA	=	2*NUM_THREADS
@@ -32,27 +33,23 @@ module arya #(
 	(input 		clk,
     input 		reset,
 	input 		en,
-    input 		[INST_ADDR_WIDTH-1:0] inst_addr_in,
-    input 		[DATAPATH_WIDTH-1:0] inst_data_in,
+    input 		[INST_ADDR_WIDTH + 1:0] inst_addr_in,
+    input 		[INST_WIDTH-1:0] inst_data_in,
     input 		setup_mem,
 	input 		verify_mem,
 	input		[DATAPATH_WIDTH-1:0] datamem_data_in,
-	//input		[MEM_ADDR_WIDTH-1:0] datamem_first_addr_in,
-	//input		[MEM_ADDR_WIDTH-1:0] datamem_last_addr_in,
-	//input		[THREAD_BITS-1:0] thread_id_in,
 	input			[NUM_THREADS-1:0]			start_thread,	
 	input			[NUM_THREADS-1:0]			debug_commands,
 	input			debug_on,
 	
-	/*output		cpu_done,
-	output		cpu_busy,*/
-	output 		[DATAPATH_WIDTH-1:0] inst_data_out,
+	output 		[INST_WIDTH-1:0] inst_data_out,
 	output		reg [(8*NUM_THREADS)-1:0] datamem_addr_out,
 	output		reg [(DATAPATH_WIDTH*NUM_THREADS)-1:0] datamem_data_out,
 	output		reg [NUM_THREADS-1:0]datamem_we_out,
 	output		[THREAD_BITS-1:0]			thread_id_out,
 	output 		reg [NUM_THREADS-1:0]	thread_busy,
-	output 		reg [NUM_THREADS-1:0]	thread_done
+	output 		reg [NUM_THREADS-1:0]	thread_done,
+	output		[31:0] halt_counter_out
 
     );
 	 
@@ -75,14 +72,14 @@ wire 	[3:0]pc_select;
 //////////////////////////////////////// wires dualport_mem1 ///////////////////////////////////
 
 wire 	[(INST_ADDR_WIDTH-1) + 2:0] porta_addr_in;
-wire 	[DATAPATH_WIDTH-1:0]	porta_data_in;
+wire 	[INST_WIDTH-1:0]	porta_data_in;
 wire	porta_we_in;
-wire 	[DATAPATH_WIDTH-1:0]	porta_data_out;
+wire 	[INST_WIDTH-1:0]	porta_data_out;
 
-wire 	[MEM_ADDR_WIDTH-1:0]	portb_addr_in;
-wire 	[DATAPATH_WIDTH-1:0]	portb_data_in;
+wire 	[(INST_ADDR_WIDTH-1) + 2:0]	portb_addr_in;
+wire 	[INST_WIDTH-1:0]	portb_data_in;
 wire 	portb_we_in;
-wire	[DATAPATH_WIDTH-1:0]	portb_data_out;
+wire	[INST_WIDTH-1:0]	portb_data_out;
 
 
 wire 	[MEM_ADDR_WIDTH-1:0]	df_portb_addr_in;
@@ -93,8 +90,8 @@ wire	[DATAPATH_WIDTH-1:0]	df_portb_data_out;
 
 //////////////////////////////////////// wires pipe_fetch_decode ///////////////////////////////////
 							  
-wire 	[31:0] 						pipe_fd_inst_in;
-wire 	[31:0] 						pipe_fd_inst_out;
+wire 	[INST_WIDTH-1:0] 						pipe_fd_inst_in;
+wire 	[INST_WIDTH-1:0] 						pipe_fd_inst_out;
 wire 	[INST_ADDR_WIDTH-1:0]	pipe_fd_pc_in;
 wire	[INST_ADDR_WIDTH-1:0]	pipe_fd_pc_out;
 wire [THREAD_BITS-1:0]			pipe_fd_thread_id_in;
@@ -102,7 +99,7 @@ wire [THREAD_BITS-1:0]			pipe_fd_thread_id_out;
 
 //////////////////////////////////////// wires decoder ///////////////////////////////////
 
-wire 	[31:0]							decoder_inst_in;
+wire 	[INST_WIDTH-1:0]							decoder_inst_in;
 wire 	[REGFILE_ADDR_WIDTH-1:0]	decoder_R1_addr_out;
 wire 	[REGFILE_ADDR_WIDTH-1:0]	decoder_R2_addr_out;
 wire 	[REGFILE_ADDR_WIDTH-1:0]	decoder_WR_addr_out;
@@ -249,7 +246,10 @@ assign pc_clk[0] = clk && ~thread_id[1] && ~thread_id[0];
 assign pc_clk[1] = clk && ~thread_id[1] && thread_id[0];
 assign pc_clk[2] = clk && thread_id[1] && ~thread_id[0];
 assign pc_clk[3] = clk && thread_id[1] && thread_id[0];
-wire [1:0] temp;
+wire [(INST_ADDR_WIDTH-1) + 2:0] temp [0:NUM_THREADS-1];
+
+
+
 
 genvar i;
 	generate
@@ -261,19 +261,23 @@ genvar i;
 				) pc (
 				.clk			(clk), 
 				.en			(pc_en[i]),
-				.wen			(pc_select[i]),
+				//.wen			(pc_select[i]),
+				// REMOVE BELOW HACK
+				.wen			(0),
 				.reset		(thread_done[i] || reset),
 				.pc_in		(pc_in[i]),		
-				.pc_out		({pc_out[i],temp})
+				.pc_out		(temp[i])
 			);
-	 
+			
+			assign pc_out[i] = temp[i][(INST_ADDR_WIDTH-1) + 2:2];
+
 		end// for
 	endgenerate// endgenerate
 //////////////////////////////////////// assigns ///////////////////////////////////
 
 //porta
-wire [9:0]mux1_out;
-wire [9:0]mux2_out;
+wire [(INST_ADDR_WIDTH - 1) + 2:0]mux1_out;
+wire [(INST_ADDR_WIDTH - 1) + 2:0]mux2_out;
 assign mux1_out = thread_id[0] ? {2'b01,pc_out[1]}:{2'b00,pc_out[0]};
 assign mux2_out = thread_id[0] ? {2'b11,pc_out[3]}:{2'b10,pc_out[2]};
 assign porta_addr_in = thread_id[1] ? mux2_out : mux1_out; 
@@ -284,11 +288,11 @@ assign porta_we_in		= 0;
 assign portb_addr_in 	= inst_addr_in;
 assign portb_data_in		= inst_data_in;
 assign portb_we_in		= setup_mem;
-assign mem_data_out		= portb_data_out;
+assign inst_data_out		= portb_data_out;
 
 /////////////////////////////// module instantiation //////////////////////////////////
 
-inst_mem memory (
+small_inst_mem memory (
 //		.ena				(~decoder_halt_cpu_out || enable_mem),
 		.addra			(porta_addr_in), 	// input
 		.dina				(porta_data_in), 	// input
@@ -305,7 +309,7 @@ inst_mem memory (
 //////////////////////////////////////// assigns ///////////////////////////////////
 assign pipe_fd_inst_in 	= porta_data_out;
 assign mem_data_out		= portb_data_out;
-assign pipe_fd_pc_in 	= porta_addr_in[7:0];
+assign pipe_fd_pc_in 	= porta_addr_in[INST_ADDR_WIDTH-1:0];
 assign pipe_fd_thread_id_in = thread_id;
 /////////////////////////////// module instantiation //////////////////////////////////
 
@@ -336,7 +340,8 @@ assign decoder_inst_in = porta_data_out;
 inst_decoder #(
 		.DATAPATH_WIDTH		(DATAPATH_WIDTH),
 		.REGFILE_ADDR_WIDTH	(REGFILE_ADDR_WIDTH),
-		.INST_ADDR_WIDTH		(INST_ADDR_WIDTH)
+		.INST_ADDR_WIDTH		(INST_ADDR_WIDTH),
+		.INST_WIDTH				(INST_WIDTH)
 )decoder (
 		.inst_in			(decoder_inst_in), 		// input
 		.reset			(reset),
@@ -358,8 +363,8 @@ inst_decoder #(
 		.bneq_out		(decoder_bneq_out),
 		.imm_sel_out	(decoder_imm_sel_out),
 		.mem_write_out	(decoder_mem_write_out),
-		.mem_reg_sel	(decoder_mem_reg_sel_out)
-		//.halt_cpu_out	(decoder_halt_cpu_out)
+		.mem_reg_sel	(decoder_mem_reg_sel_out),
+		.halt_counter	(halt_counter_out)
 		);
 
 /////////////////////////////// module instantiation //////////////////////////////////
@@ -558,7 +563,7 @@ assign pc_in[0]	=pipe_em_branch_target_out;
 // to memory
 //assign portb_addr_in 		= {one,alu_accum_out[8:0]}; // TIMING FIX
 //assign portb_data_in 		= pipe_de_store_data_out; // TIMING FIX
-assign df_portb_addr_in			= pipe_em_accum_out[7:0];
+assign df_portb_addr_in			= pipe_em_accum_out[MEM_ADDR_WIDTH-1:0];
 assign df_portb_data_in			= pipe_em_store_data_out;
 assign df_portb_we_in 			= pipe_em_mem_write_out;
 
@@ -668,11 +673,18 @@ assign thread_id_out = pipe_mw_thread_id_out ;
 	reg		[NUM_THREADS-1:0]	manual_trigger_next;
 	reg		[NUM_THREADS-1:0]	counter_trigger;
 
-	
+
+
+
+
+    /// GENERATE BLOCK ////
 	generate
 	for (i=0; i<NUM_THREADS ;i=i+1) begin: combinational
-
-	assign cpu_done_trigger[i] = debug_on ? manual_trigger[i] : decoder_thread_done[i];
+	assign cpu_done_trigger[i] = decoder_thread_done[i];
+	//assign cpu_done_trigger[i] = counter_trigger[i];
+	//assign cpu_done_trigger[i] = pc_thread_trigger[i];
+	//assign cpu_done_trigger[i] = debug_on ? counter_trigger[i] : decoder_thread_done[i];
+	//assign cpu_done_trigger[i] = debug_on ? manual_trigger[i] : counter_trigger[i];
 
 	always @(*) begin
 
@@ -767,8 +779,6 @@ assign thread_id_out = pipe_mw_thread_id_out ;
 			debug_state[i] <= debug_state_next[i];
 			manual_trigger[i] <= manual_trigger_next[i]; 
 		end // else if not reset
-		
-		
 	end // always
 	end //for
 	endgenerate
