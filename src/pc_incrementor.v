@@ -28,20 +28,23 @@ module pc_incrementor
 	 input reset,
 	 input wen,
 	 input [INST_ADDR_WIDTH - 1:0] 	pc_in,
-    output reg [INST_ADDR_WIDTH + 1:0] pc_out
+    output [INST_ADDR_WIDTH-1:0] pc_out
 	 );
    
+reg [INST_ADDR_WIDTH + 1:0] pc_out_reg;
+assign pc_out = pc_out_reg[INST_ADDR_WIDTH + 1 :2];
+
 always @ (posedge clk)
  begin : COUNTER 
    if (reset) begin
-     pc_out <=   'b0;
+     pc_out_reg <=   'b0;
    end
    else if (en) begin
 		if (wen) begin
-			pc_out[INST_ADDR_WIDTH + 1 :2] <= pc_in;
+			pc_out_reg[INST_ADDR_WIDTH + 1 :2] <= pc_in;
 		end
 		else begin
-			pc_out 	<= pc_out + 'b1;
+			pc_out_reg 	<= pc_out_reg + 'b1;
 		end // else
    end // else if not enable
 end // always

@@ -21,12 +21,11 @@
 module branch_adder # (
 	parameter INST_ADDR_WIDTH = 9
 )(
-    input 	[INST_ADDR_WIDTH-1:0] 	pc_in,
     input 	[INST_ADDR_WIDTH-1:0] 	branch_offset,
     output 	[INST_ADDR_WIDTH-1:0] 	branch_target
     );
 
-//assign branch_target = pc_in + branch_offset;
+//assign branch_target = pc_in + branch_offset; // Removed because branches are actually jumps
 assign branch_target = branch_offset;
 
 endmodule
