@@ -483,36 +483,30 @@ always @(*) begin
 			dropfifo_write_next = 0;
 			if (~stop_smallfifo_rd) begin
 			if (in_fifo_ctrl_p != 0) begin
-				state_next = HEADER;
+				state_next = PAYLOAD;
 				begin_pkt_next = 1;
 				dropfifo_write_next = 1;
 			end // if (in_fifo_ctrl_p != 0)
 			end // if (~stop_smallfifo_rd)
 			end // START
-			HEADER: begin
-			begin_pkt_next = 0;
-			if (in_fifo_ctrl_p == 0) begin
-				header_counter_next = header_counter + 1'b1;
-				if (header_counter_next == 4) begin
-					source_ip_next = in_fifo_data_p;
-					start_in_next = 1;
-				end else begin
-					source_ip_next = 0;
-					start_in_next = 0;
-				end
-				if (header_counter_next == 5) begin
-					state_next = PAYLOAD;
-				end
-			end
-			end // HEADER
 			PAYLOAD: begin
-			if (in_fifo_ctrl_p != 0) begin
-				state_next = START;
-				header_counter_next = 0;
-				enable_cpu_next = 1;
-				current_thread_next = current_thread_next + 1;
-                num_packets_in_next = num_packets_in_next + 1;
-			end // if (in_fifo_ctrl_p !=0)
+                begin_pkt_next = 0;
+                header_counter_next = header_counter + 1'b1;
+                if (in_fifo_ctrl_p == 0) begin
+                    if (header_counter_next == 4) begin
+                        source_ip_next = in_fifo_data_p;
+                        start_in_next = 1;
+                    end else begin
+                        source_ip_next = 0;
+                        start_in_next = 0;
+                    end
+                end else if (in_fifo_ctrl_p != 0) begin
+                    state_next = START;
+                    header_counter_next = 0;
+                    enable_cpu_next = 1;
+                    current_thread_next = current_thread_next + 1;
+                    num_packets_in_next = num_packets_in_next + 1;
+                end // if (in_fifo_ctrl_p !=0)
 			end // PAYLOAD
 		endcase // case(state)
 	end
