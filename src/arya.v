@@ -39,7 +39,6 @@ module arya #(
     input 		setup_mem,
 	input		[DATAPATH_WIDTH-1:0] datamem_data_in,
 	input			[NUM_THREADS-1:0]			start_thread,	
-	input			[NUM_THREADS-1:0]			debug_commands,
 	input		[NUM_ACTIONS-1:0]	action_data_in,
 	input		action_wen,
 	input		[THREAD_BITS-1:0] action_thread_id_in,
@@ -56,7 +55,7 @@ module arya #(
     );
 	 
 reg [THREAD_BITS-1:0]thread_id;
-
+reg [NUM_THREADS-1:0] thread_done_next;
 
 
 /////////////////////////////////////// wires pc_incrementor //////////////////////////////////////
@@ -89,10 +88,6 @@ wire	[DATAPATH_WIDTH-1:0]	df_portb_data_out;
 
 //////////////////////////////////////// wires pipe_fetch_decode ///////////////////////////////////
 							  
-wire 	[INST_WIDTH-1:0] 						pipe_fd_inst_in;
-wire 	[INST_WIDTH-1:0] 						pipe_fd_inst_out;
-wire 	[INST_ADDR_WIDTH-1:0]	pipe_fd_pc_in;
-wire	[INST_ADDR_WIDTH-1:0]	pipe_fd_pc_out;
 wire [THREAD_BITS-1:0]			pipe_fd_thread_id_in;
 wire [THREAD_BITS-1:0]			pipe_fd_thread_id_out;
 
@@ -113,7 +108,6 @@ wire 										decoder_imm_sel_out;
 wire 										decoder_beq_out;
 wire 										decoder_bneq_out;
 wire 										decoder_mem_write_out;
-wire 										decoder_halt_cpu_out;
 
 //////////////////////////////////////// wires register_file /////////////////////////////////// 
 		 
@@ -127,13 +121,11 @@ wire 	rf_wena_in;
 
 //////////////////////////////////////// wires pipe_decode_execute /////////////////////////////////// 
 	
-wire 	[INST_ADDR_WIDTH-1:0]		pipe_de_pc_in;
 wire	[DATAPATH_WIDTH-1:0]			pipe_de_R1_data_in;	
 wire	[DATAPATH_WIDTH-1:0]			pipe_de_R2_data_in;
 wire	[REGFILE_ADDR_WIDTH-1:0]	pipe_de_WR_addr_in;
 wire [3:0]								pipe_de_alu_ctrl_in;
 wire [INST_ADDR_WIDTH-1:0]			pipe_de_branch_offset_in;
-wire [4:0]								pipe_de_alu_shift_value_in;
 
 
 
@@ -145,13 +137,11 @@ wire 										pipe_de_mem_write_in;
 wire 	[DATAPATH_WIDTH-1:0]			pipe_de_store_data_in;
 wire [THREAD_BITS-1:0]				pipe_de_thread_id_in;
 
-wire 	[INST_ADDR_WIDTH-1:0]		pipe_de_pc_out;
 wire	[DATAPATH_WIDTH-1:0]			pipe_de_R1_data_out;	
 wire	[DATAPATH_WIDTH-1:0]			pipe_de_R2_data_out;
 wire	[REGFILE_ADDR_WIDTH-1:0]	pipe_de_WR_addr_out;
 wire [3:0]								pipe_de_alu_ctrl_out;
 wire [INST_ADDR_WIDTH-1:0]			pipe_de_branch_offset_out;
-wire [4:0]								pipe_de_alu_shift_value_out;
 
 wire										pipe_de_WR_en_out;
 wire 										pipe_de_mem_reg_sel_out;
@@ -165,11 +155,9 @@ wire [THREAD_BITS-1:0]				pipe_de_thread_id_out;
 wire	[DATAPATH_WIDTH-1:0]			alu_accum_out;
 wire 	[DATAPATH_WIDTH-1:0]			alu_a_in;	
 wire 	[DATAPATH_WIDTH-1:0]			alu_b_in;
-wire  [4:0]								alu_shift_value_in;
 wire	[3:0]								alu_ctrl_in;
 wire 										alu_zero_out;							
 //////////////////////////////////////// wires branch_adder /////////////////////////////////// 
-wire [INST_ADDR_WIDTH-1:0]			badd_pc_in;
 wire [INST_ADDR_WIDTH-1:0]			badd_branch_offset_in;
 wire [INST_ADDR_WIDTH-1:0]			badd_branch_target_out;
 //////////////////////////////////////// wires pipe execute memory /////////////////////////////////// 
@@ -199,7 +187,6 @@ wire 										pipe_em_mem_write_out;
 wire [THREAD_BITS-1:0]				pipe_em_thread_id_out;
 //////////////////////////////////////// wires pipe memory wb /////////////////////////////////// 
 
-wire 	[DATAPATH_WIDTH-1:0]			pipe_mw_mem_data_in;
 wire 	[DATAPATH_WIDTH-1:0]			pipe_mw_accum_in;
 wire 	[REGFILE_ADDR_WIDTH-1:0]	pipe_mw_WR_addr_in;
 wire 										pipe_mw_WR_en_in;
@@ -207,7 +194,6 @@ wire 										pipe_mw_mem_reg_sel_in;
 wire [THREAD_BITS-1:0]				pipe_mw_thread_id_in;
 
 
-wire 	[DATAPATH_WIDTH-1:0]			pipe_mw_mem_data_out;
 wire 	[DATAPATH_WIDTH-1:0]			pipe_mw_accum_out;
 wire 	[REGFILE_ADDR_WIDTH-1:0]	pipe_mw_WR_addr_out;
 wire 										pipe_mw_WR_en_out;
@@ -222,18 +208,9 @@ wire [THREAD_BITS-1:0]				pipe_mw_thread_id_out;
 wire beq_taken, bneq_taken;
 /////////////////////
 assign global_enable = en;
-assign cpu_done	= decoder_halt_cpu_out;
-assign cpu_busy = global_enable;
 ///////////////////////////////pc incrementor module instantiation //////////////////////////////////
 wire [NUM_THREADS-1:0]pc_en;
 wire [NUM_THREADS-1:0]decoder_thread_done;
-wire [NUM_THREADS-1:0]pc_clk;
-
-assign pc_clk[0] = clk && ~thread_id[1] && ~thread_id[0];
-assign pc_clk[1] = clk && ~thread_id[1] && thread_id[0];
-assign pc_clk[2] = clk && thread_id[1] && ~thread_id[0];
-assign pc_clk[3] = clk && thread_id[1] && thread_id[0];
-
 
 
 genvar i;
@@ -246,9 +223,8 @@ genvar i;
 				) pc (
 				.clk			(clk), 
 				.en			(pc_en[i]),
-				//.wen			(pc_select[i]),
-				// REMOVE BELOW HACK
-				.wen			(0),
+				.wen			(pc_select[i]),
+				//.wen			(0),
 				.reset		(thread_done[i] || reset),
 				.pc_in		(pc_in[i]),		
 				.pc_out		(pc_out[i])
@@ -276,7 +252,6 @@ assign inst_data_out		= portb_data_out;
 /////////////////////////////// module instantiation //////////////////////////////////
 
 small_inst_mem memory (
-//		.ena				(~decoder_halt_cpu_out || enable_mem),
 		.addra			(porta_addr_in), 	// input
 		.dina				(porta_data_in), 	// input
 		.wea				(porta_we_in),		// input
@@ -290,19 +265,12 @@ small_inst_mem memory (
 		 );
 		 
 //////////////////////////////////////// assigns ///////////////////////////////////
-assign pipe_fd_inst_in 	= porta_data_out;
-assign mem_data_out		= portb_data_out;
-assign pipe_fd_pc_in 	= porta_addr_in[INST_ADDR_WIDTH-1:0];
 assign pipe_fd_thread_id_in = thread_id;
 /////////////////////////////// module instantiation //////////////////////////////////
 
 pipe_fetch_decode fetch_decode (
-		.inst_in			(pipe_fd_inst_in), 	// input
-		.pc_in			(pipe_fd_pc_in),
 		.thread_id_in	(pipe_fd_thread_id_in),
 		//outputs
-		.inst_out		(pipe_fd_inst_out),		// output
-		.pc_out   	 	(pipe_fd_pc_out),
 		
 		.clk				(clk), 					// input
 		.en				(global_enable), 						// input
@@ -383,7 +351,6 @@ assign rf_WR_addr_in = pipe_mw_WR_addr_out;
 assign rf_wena_in		= pipe_mw_WR_en_out && global_enable;
 
 // to next pipe
-assign pipe_de_pc_in			= pipe_fd_pc_out;
 assign pipe_de_alu_ctrl_in	= decoder_alu_ctrl_out;
 assign pipe_de_R1_data_in	= rf_R1_data_out;
 assign pipe_de_WR_addr_in 	= decoder_imm_sel_out ? decoder_R2_addr_out : decoder_WR_addr_out;
@@ -396,7 +363,6 @@ assign pipe_de_mem_reg_sel_in 	= decoder_mem_reg_sel_out;
 assign pipe_de_beq_in		= decoder_beq_out;
 assign pipe_de_bneq_in		= decoder_bneq_out;
 assign pipe_de_store_data_in = rf_R2_data_out;
-assign pipe_de_alu_shift_value_in	=	decoder_imm_out[10:6];
 
 assign pipe_de_thread_id_in = pipe_fd_thread_id_out;
 
@@ -408,14 +374,12 @@ pipe_decode_execute #(
 		.INST_ADDR_WIDTH		(INST_ADDR_WIDTH)
 )decode_execute (
 		// input ports
-		.pc_in				(pipe_de_pc_in),
 		.R1_data_in			(pipe_de_R1_data_in),
 		.R2_data_in			(pipe_de_R2_data_in),
 		.store_data_in		(pipe_de_store_data_in),
 		.WR_addr_in			(pipe_de_WR_addr_in),
 		.branch_offset_in	(pipe_de_branch_offset_in),
 		.alu_ctrl_in		(pipe_de_alu_ctrl_in),
-		.alu_shift_value_in (pipe_de_alu_shift_value_in),
 		// control signals
 		.WR_en_in			(pipe_de_WR_en_in),
 		.mem_reg_sel_in	(pipe_de_mem_reg_sel_in),
@@ -425,7 +389,6 @@ pipe_decode_execute #(
 		.thread_id_in		(pipe_de_thread_id_in),
 		
 		// output ports
-		.pc_out				(pipe_de_pc_out),
 		.R1_data_out		(pipe_de_R1_data_out),
 		.R2_data_out		(pipe_de_R2_data_out),
 		.store_data_out	(pipe_de_store_data_out),
@@ -437,7 +400,6 @@ pipe_decode_execute #(
 		.bneq_out			(pipe_de_bneq_out),
 		.mem_write_out		(pipe_de_mem_write_out),
 		.branch_offset_out	(pipe_de_branch_offset_out),
-		.alu_shift_value_out (pipe_de_alu_shift_value_out),
 		.thread_id_out		(pipe_de_thread_id_out),
 
 		.clk(clk), 
@@ -454,7 +416,6 @@ alu #(
 ) alu1 (.a_in				(alu_a_in),
 		  .b_in				(alu_b_in),
 		  .alu_ctrl_in		(alu_ctrl_in),
-		  //.shift_value		(alu_shift_value_in),
 		  .accum_out		(alu_accum_out),
 		  .zero_out			(alu_zero_out)
 		  );
@@ -473,9 +434,7 @@ branch_adder #(
 assign alu_a_in 		= pipe_de_R1_data_out;
 assign alu_b_in 		= pipe_de_R2_data_out;
 assign alu_ctrl_in 	= pipe_de_alu_ctrl_out;
-assign alu_shift_value_in	=	pipe_de_alu_shift_value_out;
 //////////////////////////////////////// branch_adder assigns ///////////////////////////////////
-assign badd_pc_in						= pipe_de_pc_out;
 assign badd_branch_offset_in		= pipe_de_branch_offset_out;
 //////////////////////////////////////// assigns to next pipe ///////////////////////////////////
 //from alu
@@ -539,7 +498,7 @@ assign beq_taken 		=  pipe_em_beq_out && pipe_em_zero_out;
 assign bneq_taken		= 	pipe_em_bneq_out && ~pipe_em_zero_out;
 assign branch_true	=	beq_taken | bneq_taken;
 
-assign pc_select = (branch_true) ? (1 << thread_id) : 4'b0 ;
+assign pc_select = (branch_true) ? (1 << pipe_em_thread_id_out) : 4'b0 ;
 
 assign pc_in[3]	=pipe_em_branch_target_out;
 assign pc_in[2]	=pipe_em_branch_target_out;
@@ -602,9 +561,6 @@ else begin
 end // always
 assign df_portb_data_out		= datamem_data_in;
 
-// to next pipe
-//assign pipe_mw_mem_data_in 	= portb_data_out;
-assign pipe_mw_mem_data_in		= datamem_data_in; // initially df_portb_data_out
 assign pipe_mw_WR_en_in 		= pipe_em_WR_en_out; 
 assign pipe_mw_WR_addr_in		= pipe_em_WR_addr_out;
 assign pipe_mw_accum_in			= pipe_em_accum_out;
@@ -618,14 +574,12 @@ pipe_mem_wb #(
 		.DATAPATH_WIDTH		(DATAPATH_WIDTH),
 		.REGFILE_ADDR_WIDTH	(REGFILE_ADDR_WIDTH)
 )mem_wb (
-		.mem_data_in	(pipe_mw_mem_data_in),
 		.accum_in		(pipe_mw_accum_in),
 		.WR_addr_in		(pipe_mw_WR_addr_in),
 		.WR_en_in		(pipe_mw_WR_en_in),
 		.mem_reg_sel_in(pipe_mw_mem_reg_sel_in),
 		.thread_id_in	(pipe_mw_thread_id_in),
 		
-		.mem_data_out	(pipe_mw_mem_data_out),
 		.accum_out		(pipe_mw_accum_out),
 		.WR_addr_out	(pipe_mw_WR_addr_out),
 		.WR_en_out		(pipe_mw_WR_en_out),
@@ -650,14 +604,10 @@ assign thread_id_out = pipe_mw_thread_id_out ;
 	reg		[NUM_THREADS-1:0]	state ;
 	reg		[NUM_THREADS-1:0]	state_next;
 	reg 	[NUM_THREADS*10-1:0]	count ;
-	reg 	[NUM_THREADS-1:0] counter_reset;
+	reg 	[NUM_THREADS-1:0] counter_reset, counter_reset_next;
 	reg		[NUM_THREADS-1:0] thread_busy_next;
 
-	reg		[NUM_THREADS-1:0]	debug_state ;
-	reg		[NUM_THREADS-1:0]	debug_state_next;
 	wire	[NUM_THREADS-1:0]	cpu_done_trigger;
-	reg		[NUM_THREADS-1:0]	manual_trigger;
-	reg		[NUM_THREADS-1:0]	manual_trigger_next;
 	reg		[NUM_THREADS-1:0]	counter_trigger;
 
 
@@ -668,68 +618,46 @@ assign thread_id_out = pipe_mw_thread_id_out ;
 	assign cpu_done_trigger[i] = counter_trigger[i];
 	//assign cpu_done_trigger[i] = pc_thread_trigger[i];
 	//assign cpu_done_trigger[i] = debug_on ? counter_trigger[i] : decoder_thread_done[i];
-	//assign cpu_done_trigger[i] = debug_on ? manual_trigger[i] : counter_trigger[i];
 
 	always @(*) begin
 
 	state_next[i] = state[i];
 	thread_busy_next[i] = thread_busy[i];
+	thread_done_next[i] = thread_done[i];
+	counter_reset_next[i] = counter_reset[i];
 	
 	// state machine below for CPU operation
 		case (state[i])
 			START: begin
-			thread_done[i] = 0;
+			thread_done_next[i] = 0;
 			thread_busy_next[i] = 0;
-			counter_reset[i] = 1;
+			counter_reset_next[i] = 1;
 			if (start_thread[i]) begin
-				counter_reset[i] = 0;
+				counter_reset_next[i] = 0;
 				state_next[i] = BUSY;
 				thread_busy_next[i] = 1;
 			end // if (start_thread_0)
 			end // START
 			BUSY: begin
 			if (cpu_done_trigger[i]) begin
-				counter_reset[i] = 1;
+				counter_reset_next[i] = 1;
 				state_next[i] = START;
 				thread_busy_next[i] = 0;
-				thread_done[i] = 1;
+				thread_done_next[i] = 1;
 			end // if (count == 10) 
 			end // BUSY
 		endcase
-		
-		// state machine below to get the manual trigger generated
-		debug_state_next[i] = debug_state[i];
-		manual_trigger_next[i] = manual_trigger[i];
-		
-		case (debug_state[i])
-			START:begin
-				manual_trigger_next[i] = 0;
-				if (1 == debug_commands[i]) begin
-					debug_state_next[i] = BUSY;
-					manual_trigger_next[i] = 1;
-				end // if 
-			end // START
-			BUSY: begin
-				if (0 == debug_commands[i]) begin
-					debug_state_next[i] = START;
-					manual_trigger_next[i] = 0;
-				end // if
-				else begin
-					manual_trigger_next[i] = 0;
-				end // else
-			end // BUSY
-		endcase
 	end // always
-	end// for
+	end // for
+		
 	endgenerate
-
+		
 	
 	generate
 	for (i=0; i<NUM_THREADS ;i=i+1) begin: sequen
 	always @(posedge clk) begin
 		if(reset) begin
 			state[i] <= START;
-			debug_state[i] <= START;
 			count[i*10] 	<= 0;
 			count[i*10+1] 	<= 0;
 			count[i*10+2] 	<= 0;
@@ -741,8 +669,9 @@ assign thread_id_out = pipe_mw_thread_id_out ;
 			count[i*10+8] 	<= 0;
 			count[i*10+9] 	<= 0;
 			thread_busy[i] <= 0;
-			manual_trigger[i] <= 0;
-			thread_id<=0;
+			thread_id		<=	0;
+			thread_done[i]		<=	0;
+			counter_reset[i] <= 0;
 		end // if (reset)
 		else begin
 			thread_id<=thread_id + 1;
@@ -759,9 +688,8 @@ assign thread_id_out = pipe_mw_thread_id_out ;
 			end else begin
 				counter_trigger[i] = 0;
 			end
-			
-				debug_state[i] <= debug_state_next[i];
-			manual_trigger[i] <= manual_trigger_next[i]; 
+			thread_done[i] <= thread_done_next[i];
+			counter_reset[i] <= counter_reset_next[i];
 		end // else if not reset
 	end // always
 	end //for

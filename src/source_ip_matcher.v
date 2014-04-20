@@ -35,7 +35,7 @@ module accelerator #(
 	input [FT_ADDR_WIDTH-1:0] ft_addr,
 	input setup_ft,
 	
-    output [NUM_ACTIONS-1:0] action_out,
+    output reg [NUM_ACTIONS-1:0] action_out,
     output reg [2:0] thread_id_out,
     output reg acc_done,
 	output [31:0] count_out,
@@ -65,7 +65,8 @@ counter ctr (
     .read_counter			(read_counter), 
     .count_out				(count_out)
     );
-	 
+
+    /*
 action_lookup action_lookup1 (
     .clka					(clk), 
     .dina					(ft_action), 
@@ -75,7 +76,18 @@ action_lookup action_lookup1 (
     .addrb					(dram_rd_addr_in), 
     .doutb					(action_out)
     );
-
+*/
+always @(posedge clk) begin
+    if (reset) begin
+        action_out <= 'b0000;
+    end else begin
+        if  (tcam_match_out) begin
+            action_out <= 'b1111;
+        end else begin
+            action_out <= 'b0000;
+        end
+    end // reset
+end // always
 
 ipmatch ipmatch1 (
     .clk					(clk), 
@@ -100,8 +112,8 @@ always @ (posedge clk) begin
 	thread_id_d2 <= thread_id_d1;
 	thread_id_out <= thread_id_d2;
 	acc_done_d1 <= start_in;
-	acc_done_d2 <= acc_done_d1;
-	acc_done <= acc_done_d2;
+//	acc_done_d2 <= acc_done_d1;
+	acc_done <= acc_done_d1;
 	end // else
 end	 
 endmodule

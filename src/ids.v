@@ -326,9 +326,6 @@ outfifo_arbiter out_arb(
 		.clk							(clk),
 		.en								(1),			// Forcing it to be one.
 		.reset							(reset),
-		//.debug_commands					(dbs_cmd[(j+7)*`NUM_THREADS_PER_CORE-1:(j+6)*`NUM_THREADS_PER_CORE]),
-        .debug_commands                 (0),
-		//.debug_on						(0),
 		// For all threads
 		.start_thread					(arya_start_thread[(j+1)*`NUM_THREADS_PER_CORE-1:j*`NUM_THREADS_PER_CORE]),	//input pulse
 		.thread_busy					(arya_thread_busy[(j+1)*`NUM_THREADS_PER_CORE-1:j*`NUM_THREADS_PER_CORE]),	//output high
@@ -490,23 +487,23 @@ always @(*) begin
 			end // if (~stop_smallfifo_rd)
 			end // START
 			PAYLOAD: begin
-                begin_pkt_next = 0;
-                header_counter_next = header_counter + 1'b1;
-                if (in_fifo_ctrl_p == 0) begin
-                    if (header_counter_next == 4) begin
-                        source_ip_next = in_fifo_data_p;
-                        start_in_next = 1;
-                    end else begin
-                        source_ip_next = 0;
-                        start_in_next = 0;
-                    end
-                end else if (in_fifo_ctrl_p != 0) begin
-                    state_next = START;
-                    header_counter_next = 0;
-                    enable_cpu_next = 1;
-                    current_thread_next = current_thread_next + 1;
-                    num_packets_in_next = num_packets_in_next + 1;
-                end // if (in_fifo_ctrl_p !=0)
+			begin_pkt_next = 0;
+			header_counter_next = header_counter + 1'b1;
+			if (in_fifo_ctrl_p == 0) begin
+				if (header_counter_next == 4) begin
+					source_ip_next = in_fifo_data_p;
+					start_in_next = 1;
+				end else begin
+					source_ip_next = 0;
+					start_in_next = 0;
+				end 
+			end else if (in_fifo_ctrl_p != 0) begin
+					state_next = START;
+					header_counter_next = 0;
+					enable_cpu_next = 1;
+					current_thread_next = current_thread_next + 1;
+					num_packets_in_next = num_packets_in_next + 1;
+			end // if (in_fifo_ctrl_p !=0)
 			end // PAYLOAD
 		endcase // case(state)
 	end
