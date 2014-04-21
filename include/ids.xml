@@ -4,7 +4,7 @@
 	<nf:prefix>ids</nf:prefix>
 	<nf:location>udp</nf:location>
 	<nf:description>Registers for IDS</nf:description>
-	<nf:blocksize>128</nf:blocksize>
+	<nf:blocksize>64</nf:blocksize>
 	<nf:registers>
 		<nf:register>
 		  <nf:name>dbs_cmd_0</nf:name>
@@ -36,28 +36,28 @@
 			<nf:description>Upper 32 bits of Pattern</nf:description>
 			<nf:type>generic_software32</nf:type>
 		</nf:register>
-		<nf:register>
-		  <nf:name>dbs_counter_read_addr</nf:name>
+        <nf:register>
+            <nf:name>dbs_counter_read_addr</nf:name>
 			<nf:description>Upper 32 bits of Pattern</nf:description>
 			<nf:type>generic_software32</nf:type>
 		</nf:register>
-		<nf:register>
-		  <nf:name>dbs_ft_ip</nf:name>
+        <nf:register>
+            <nf:name>dbs_ft_ip</nf:name>
 			<nf:description>Upper 32 bits of Pattern</nf:description>
 			<nf:type>generic_software32</nf:type>
 		</nf:register>
-		<nf:register>
-		  <nf:name>dbs_ft_action</nf:name>
+        <nf:register>
+            <nf:name>dbs_ft_action</nf:name>
 			<nf:description>Upper 32 bits of Pattern</nf:description>
 			<nf:type>generic_software32</nf:type>
 		</nf:register>
-		<nf:register>
-		  <nf:name>dbs_ft_addr</nf:name>
+        <nf:register>
+            <nf:name>dbs_ft_addr</nf:name>
 			<nf:description>Upper 32 bits of Pattern</nf:description>
 			<nf:type>generic_software32</nf:type>
 		</nf:register>
-		<nf:register>
-		  <nf:name>dbs_compare_ip_in</nf:name>
+        <nf:register>
+            <nf:name>dbs_compare_ip_in</nf:name>
 			<nf:description>Upper 32 bits of Pattern</nf:description>
 			<nf:type>generic_software32</nf:type>
 		</nf:register>
@@ -86,13 +86,8 @@
 			<nf:description>Upper 32 bits of Pattern</nf:description>
 			<nf:type>generic_hardware32</nf:type>
 		</nf:register>
-		<nf:register>
-		  <nf:name>dbh_ft_count_output</nf:name>
-			<nf:description>Upper 32 bits of Pattern</nf:description>
-			<nf:type>generic_hardware32</nf:type>
-		</nf:register>
-		<nf:register>
-		  <nf:name>dbh_num_matches</nf:name>
+        <nf:register>
+            <nf:name>dbh_ft_count_output</nf:name>
 			<nf:description>Upper 32 bits of Pattern</nf:description>
 			<nf:type>generic_hardware32</nf:type>
 		</nf:register>

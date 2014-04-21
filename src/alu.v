@@ -24,6 +24,7 @@ module alu # (
     input [DATAPATH_WIDTH-1:0] a_in,
     input [DATAPATH_WIDTH-1:0] b_in,
     input [3:0] alu_ctrl_in,
+	 //input [4:0] shift_value,
     output reg [DATAPATH_WIDTH-1:0] accum_out,
 	 output zero_out
     );
