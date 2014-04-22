@@ -76,18 +76,13 @@
 			<nf:description>Upper 32 bits of Pattern</nf:description>
 			<nf:type>generic_hardware32</nf:type>
 		</nf:register>
-		<nf:register>
-		  <nf:name>dbh_halt_counter_0</nf:name>
-			<nf:description>Upper 32 bits of Pattern</nf:description>
-			<nf:type>generic_hardware32</nf:type>
-		</nf:register>
-		<nf:register>
-		  <nf:name>dbh_halt_counter_1</nf:name>
+        <nf:register>
+            <nf:name>dbh_ft_count_output</nf:name>
 			<nf:description>Upper 32 bits of Pattern</nf:description>
 			<nf:type>generic_hardware32</nf:type>
 		</nf:register>
         <nf:register>
-            <nf:name>dbh_ft_count_output</nf:name>
+            <nf:name>dbh_num_matches</nf:name>
 			<nf:description>Upper 32 bits of Pattern</nf:description>
 			<nf:type>generic_hardware32</nf:type>
 		</nf:register>

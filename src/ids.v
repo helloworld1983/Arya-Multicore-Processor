@@ -7,7 +7,7 @@
 `define INST_ADDR_WIDTH 		6
 `define NUM_COUNTERS 			0
 `define NUM_SOFTWARE_REGS 		11
-`define NUM_HARDWARE_REGS 		6
+`define NUM_HARDWARE_REGS 		5
 `define NUM_THREADS				4
 `define	NUM_CORES				2
 `define NUM_THREADS_PER_CORE	2
@@ -111,9 +111,8 @@ wire [31:0] 					dbs_compare_ip_in;
 reg [31:0]                    	dbh_output_inst_0;
 reg [31:0]                    	dbh_output_inst_1;
 reg [31:0]                      dbh_num_packets_in;
-reg [31:0]                      dbh_halt_counter_0;
-reg [31:0]                      dbh_halt_counter_1;
 reg [31:0]						dbh_ft_count_output;
+reg [31:0]						dbh_num_matches;
 
 // internal state
 reg [1:0]                     	state, state_next;
@@ -387,18 +386,24 @@ end
 		);	
 		end
 	endgenerate
-
-	/*
+	
+	wire [31:0] ip_in;
+	wire match_true;
+	reg [31:0] num_matches;
+	assign ip_in = source_ip[47:16];
+	
 	/// accelerator ///////
 	accelerator #(
 	.FT_ADDR_WIDTH 			(`FT_ADDR_WIDTH),
 	.FT_DEPTH				(`FT_DEPTH),
-	.NUM_ACTIONS			(`NUM_ACTIONS)
+	.NUM_ACTIONS			(`NUM_ACTIONS),
+	.NUM_THREADS			(`NUM_THREADS),
+	.THREAD_BITS			(`THREAD_BITS)
 	)
 	accelerator_1 (
 	.clk							(clk),
 	.reset							(reset),
-	.ip_in							(source_ip),
+	.ip_in							(ip_in),
 	.thread_id_in					(current_thread),
 	.start_in						(start_in),
 	.counter_rd_addr_in				(dbs_counter_read_addr[`FT_ADDR_WIDTH-1:0]),
@@ -406,17 +411,18 @@ end
 	.ft_ip							(dbs_ft_ip),
 	.ft_action						(dbs_ft_action),
 	.ft_addr						(dbs_ft_addr[`FT_ADDR_WIDTH-1:0]),
-	//.setup_ft						(dbs_ft_addr[`FT_ADDR_WIDTH]),
-	.setup_ft						(0),
+	.setup_ft						(dbs_ft_addr[`FT_ADDR_WIDTH]),
+	//.setup_ft						(0),
 	.action_out						(action_out),
 	.thread_id_out					(action_thread_id),
 	.acc_done						(action_done),
 	.count_out						(ft_count_output)
+	//.match_true						(match_true)
 	);
 	/// accelerator ///////
-	*/
 	
 	wire [31:0] compare_ip_in = dbs_compare_ip_in;
+	/*
 	//wire [31:0] compare_ip_in = 'h0a010003;
 	accelerator_box acc_box (
 	.header_in				(source_ip),
@@ -429,7 +435,7 @@ end
 	.action					(action_out),
 	.thread_id_out			(action_thread_id)
 	);
-	
+	*/
 	
 	
 	generic_regs
@@ -463,7 +469,7 @@ end
 	.software_regs    ({dbs_compare_ip_in,dbs_ft_addr, dbs_ft_action, dbs_ft_ip, dbs_counter_read_addr, dbs_input_inst_1,dbs_input_inst_addr_1,dbs_input_inst_0,dbs_input_inst_addr_0,dbs_cmd_1,dbs_cmd_0}),
 
 	// --- HW regs interface
-	.hardware_regs    ({dbh_ft_count_output, dbh_halt_counter_1,dbh_halt_counter_0, dbh_num_packets_in, dbh_output_inst_1,dbh_output_inst_0}),
+	.hardware_regs    ({dbh_num_matches, dbh_ft_count_output, dbh_num_packets_in, dbh_output_inst_1,dbh_output_inst_0}),
 
 
 	.clk              (clk),
@@ -550,13 +556,13 @@ always @(posedge clk) begin
 		current_thread_1 <= 0;
 		start_in <=0;
 		source_ip <= 0;
+		num_matches <=0;
         
 		dbh_output_inst_0 <= 0;
         dbh_output_inst_1 <= 0;
         dbh_num_packets_in <= 0;
-        dbh_halt_counter_0 <= 0;
-		dbh_halt_counter_1 <= 0;
 		dbh_ft_count_output <= 0;
+		dbh_num_matches <= 0;
 		
 	end
 	else begin
@@ -579,13 +585,18 @@ always @(posedge clk) begin
 		current_thread_1 <= current_thread;
 		start_in <= start_in_next;
 		source_ip <= source_ip_next;
+		
+		if (match_true) begin
+			num_matches <= num_matches + 1;
+		end else begin
+			num_matches <= num_matches;
+		end
         
 		dbh_output_inst_0 <= output_inst[0];
         dbh_output_inst_1 <= output_inst[1];
         dbh_num_packets_in <= num_packets_in_next;
-        dbh_halt_counter_0 <= halt_counter[0];
-		dbh_halt_counter_1 <= halt_counter[1];
 		dbh_ft_count_output <= ft_count_output;
+		dbh_num_matches <= num_matches;
 	end // else: !if(reset)
 end // always @ (posedge clk)   
 
