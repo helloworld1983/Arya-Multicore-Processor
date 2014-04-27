@@ -60,12 +60,12 @@ always @(posedge clk) begin
     end else if (action_wen) begin
 		case (action_thread_id_in)
 			0: begin
-				regfile[7] <= {action_data_in,48'h00000000000000};
-				regfile[6] <= 64'h00FFFFFFFFFFFFFF;
+				regfile[7] <= {8'h00,action_data_in,48'h00000000000000};
+				regfile[6] <= 64'hFF00FFFFFFFFFFFF;
 			end
 			1: begin
-				regfile[15] <= {action_data_in,48'h00000000000000};
-				regfile[14] <= 64'h00FFFFFFFFFFFFFF;
+				regfile[15] <= {8'h00,action_data_in,48'h00000000000000};
+				regfile[14] <= 64'hFF00FFFFFFFFFFFF;
 			end
 			default: begin
 				regfile[7] <= 0;

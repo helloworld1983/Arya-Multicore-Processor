@@ -71,6 +71,11 @@
 			<nf:description>Upper 32 bits of Pattern</nf:description>
 			<nf:type>generic_software32</nf:type>
 		</nf:register>
+        <nf:register>
+            <nf:name>dbs_input_port</nf:name>
+			<nf:description>Upper 32 bits of Pattern</nf:description>
+			<nf:type>generic_software32</nf:type>
+		</nf:register>
 		<nf:register>
 		  <nf:name>dbh_output_inst_0</nf:name>
 			<nf:description>Upper 32 bits of Pattern</nf:description>

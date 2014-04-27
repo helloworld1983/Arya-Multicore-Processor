@@ -6,7 +6,7 @@
 `define MEM_ADDR_WIDTH 			8
 `define INST_ADDR_WIDTH 		7
 `define NUM_COUNTERS 			0
-`define NUM_SOFTWARE_REGS 		13
+`define NUM_SOFTWARE_REGS 		14
 `define NUM_HARDWARE_REGS 		6
 `define NUM_THREADS				4
 `define	NUM_CORES				2
@@ -108,6 +108,7 @@ wire [31:0]						dbs_ft_addr;
 wire [31:0] 					dbs_compare_ip_in;
 wire [31:0]						dbs_pattern_high;
 wire [31:0]						dbs_pattern_low;
+wire [31:0]						dbs_input_port;
 
 
 // hardware registers
@@ -394,7 +395,10 @@ end
 		.fiforead      				(out_rdy), 
 		.fifowrite     				(df_fifowrite[i]), 
 		.firstword     				(df_begin_pkt[i]), 
-		.in_fifo       				({in_fifo_ctrl,in_fifo_data}), 
+		.in_fifo       				({in_fifo_ctrl,in_fifo_data}),
+		.input_port					(dbs_input_port[15:0]),
+        .input_port_en              (dbs_input_port[16]),
+		//.input_port					(01010101),
 		.lastword					(df_startread[i]),
 		.rst           				(reset), 
 		.out_fifo      				({df_out_ctrl[i],df_out_data[i]}), 
@@ -480,7 +484,7 @@ end
 	.counter_decrement(),
 
 	// --- SW regs interface
-	.software_regs    ({dbs_pattern_low, dbs_pattern_high, dbs_compare_ip_in,dbs_ft_addr, dbs_ft_action, dbs_ft_ip, dbs_counter_read_addr, dbs_input_inst_1,dbs_input_inst_addr_1,dbs_input_inst_0,dbs_input_inst_addr_0,dbs_cmd_1,dbs_cmd_0}),
+	.software_regs    ({dbs_input_port, dbs_pattern_low, dbs_pattern_high, dbs_compare_ip_in,dbs_ft_addr, dbs_ft_action, dbs_ft_ip, dbs_counter_read_addr, dbs_input_inst_1,dbs_input_inst_addr_1,dbs_input_inst_0,dbs_input_inst_addr_0,dbs_cmd_1,dbs_cmd_0}),
 
 	// --- HW regs interface
 	.hardware_regs    ({dbh_pattern_matches, dbh_num_matches, dbh_ft_count_output, dbh_num_packets_in, dbh_output_inst_1,dbh_output_inst_0}),
@@ -505,7 +509,8 @@ always @(*) begin
     num_packets_in_next = dbh_num_packets_in;
 	source_ip_next = source_ip;
 	start_in_next = start_in;
-	end_of_pkt_next = end_of_pkt;
+//	end_of_pkt_next = end_of_pkt;
+    end_of_pkt_next = 0;
     in_pkt_body_next = in_pkt_body;
 	pattern_matches = dbh_pattern_matches;
 	

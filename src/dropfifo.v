@@ -129,6 +129,8 @@ module dropfifo #(
                 fifowrite, 
                 firstword, 
                 in_fifo, 
+				input_port,
+                input_port_en,
                 lastword, 
                 rst, 
                 out_fifo, 
@@ -149,6 +151,8 @@ module dropfifo #(
     input fifowrite;
     input firstword;
     input [71:0] in_fifo;
+	input [15:0] input_port;
+    input input_port_en;
     input lastword;
     input rst;
 	input [7:0]		datamem_addr_in;
@@ -225,10 +229,23 @@ assign valid_data_early = XLXN_40;
               .D(drop_pkt), 
               .Q(XLXN_25));
    defparam XLXI_7.INIT = 1'b0;
+   
+   wire [71:0] modified_in_fifo;
+   wire [15:0] dst_port;
+   wire change_dst;
+
+   assign change_dst = firstword && input_port_en;
+   
+   assign dst_port = change_dst ? input_port : in_fifo[63:48];
+   assign modified_in_fifo[71:64] = in_fifo[71:64];
+   assign modified_in_fifo[63:48] = dst_port[15:0];
+   assign modified_in_fifo[47:0] = in_fifo[47:0];
+   
    reg9B XLXI_8 (.ce(XLXN_29), 
                  .clk(clk), 
                  .clr(rst), 
-                 .d(in_fifo[71:0]), 
+                 //.d(in_fifo[71:0]), 
+				 .d(modified_in_fifo), 
                  .q(XLXN_39[71:0]));
    CB8CLE_HXILINX_dropfifo XLXI_9 (.C(clk), 
                                    .CE(XLXN_28), 
