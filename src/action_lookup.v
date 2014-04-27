@@ -48,12 +48,12 @@ module action_lookup(
 
 
 input clka;
-input [3 : 0] dina;
+input [7 : 0] dina;
 input [3 : 0] addra;
 input [0 : 0] wea;
 input clkb;
 input [3 : 0] addrb;
-output [3 : 0] doutb;
+output [7 : 0] doutb;
 
 // synthesis translate_off
 
@@ -77,15 +77,15 @@ output [3 : 0] doutb;
 		.C_HAS_REGCEB(0),
 		.C_HAS_SSRA(0),
 		.C_HAS_SSRB(0),
-		.C_INIT_FILE_NAME("action_lookup.mif"),
-		.C_LOAD_INIT_FILE(1),
+		.C_INIT_FILE_NAME("no_coe_file_loaded"),
+		.C_LOAD_INIT_FILE(0),
 		.C_MEM_TYPE(1),
 		.C_MUX_PIPELINE_STAGES(0),
 		.C_PRIM_TYPE(1),
 		.C_READ_DEPTH_A(16),
 		.C_READ_DEPTH_B(16),
-		.C_READ_WIDTH_A(4),
-		.C_READ_WIDTH_B(4),
+		.C_READ_WIDTH_A(8),
+		.C_READ_WIDTH_B(8),
 		.C_SIM_COLLISION_CHECK("ALL"),
 		.C_SINITA_VAL("0"),
 		.C_SINITB_VAL("0"),
@@ -100,8 +100,8 @@ output [3 : 0] doutb;
 		.C_WRITE_DEPTH_B(16),
 		.C_WRITE_MODE_A("READ_FIRST"),
 		.C_WRITE_MODE_B("READ_FIRST"),
-		.C_WRITE_WIDTH_A(4),
-		.C_WRITE_WIDTH_B(4),
+		.C_WRITE_WIDTH_A(8),
+		.C_WRITE_WIDTH_B(8),
 		.C_XDEVICEFAMILY("virtex2p"))
 	inst (
 		.CLKA(clka),

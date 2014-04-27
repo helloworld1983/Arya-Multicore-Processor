@@ -31,8 +31,8 @@ module pc_incrementor
     output [INST_ADDR_WIDTH-1:0] pc_out
 	 );
    
-reg [INST_ADDR_WIDTH + 1:0] pc_out_reg;
-assign pc_out = pc_out_reg[INST_ADDR_WIDTH + 1 :2];
+reg [(INST_ADDR_WIDTH -1 )+ 1:0] pc_out_reg;
+assign pc_out = pc_out_reg[(INST_ADDR_WIDTH - 1) + 1 :1];
 
 always @ (posedge clk)
  begin : COUNTER 
@@ -41,7 +41,7 @@ always @ (posedge clk)
    end
    else if (en) begin
 		if (wen) begin
-			pc_out_reg[INST_ADDR_WIDTH + 1 :2] <= pc_in;
+			pc_out_reg[(INST_ADDR_WIDTH - 1) + 1 :1] <= pc_in;
 		end
 		else begin
 			pc_out_reg 	<= pc_out_reg + 'b1;

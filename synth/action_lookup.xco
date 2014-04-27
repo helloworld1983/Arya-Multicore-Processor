@@ -1,7 +1,7 @@
 ##############################################################
 #
 # Xilinx Core Generator version K.39
-# Date: Sat Apr 19 22:26:32 2014
+# Date: Sat Apr 26 06:38:45 2014
 #
 ##############################################################
 #
@@ -55,8 +55,8 @@ CSET output_reset_value_a=0
 CSET output_reset_value_b=0
 CSET pipeline_stages=0
 CSET primitive=8kx2
-CSET read_width_a=4
-CSET read_width_b=4
+CSET read_width_a=8
+CSET read_width_b=8
 CSET register_porta_output_of_memory_core=false
 CSET register_porta_output_of_memory_primitives=false
 CSET register_portb_output_of_memory_core=false
@@ -70,9 +70,9 @@ CSET use_regceb_pin=false
 CSET use_ssra_pin=false
 CSET use_ssrb_pin=false
 CSET write_depth_a=16
-CSET write_width_a=4
-CSET write_width_b=4
+CSET write_width_a=8
+CSET write_width_b=8
 # END Parameters
 GENERATE
-# CRC: 9686ac93
+# CRC: 5db2993b
 

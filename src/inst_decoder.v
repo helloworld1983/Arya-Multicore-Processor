@@ -62,9 +62,16 @@ wire [47:0]sign_extend;
  
 assign opcode 			= inst_in[31:26];
 assign alu_func 		= inst_in[3:0]; // taking two bits from opcode and 4 bits from inst_in.
+
+/* Commenting out for regfile with 16 registers only
 assign R1_addr_out 	= inst_in[25:21];
 assign R2_addr_out 	= inst_in[20:16];
 assign WR_addr_out 	= inst_in[15:11];
+*/
+// below was added to make regile of 16 registers
+assign R1_addr_out 	= inst_in[24:21];
+assign R2_addr_out 	= inst_in[19:16];
+assign WR_addr_out 	= inst_in[14:11];
 
 assign sign_extend 		= $signed(inst_in[15]); 
 assign imm_out			= {sign_extend,inst_in[15:0]};

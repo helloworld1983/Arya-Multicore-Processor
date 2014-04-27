@@ -36,6 +36,9 @@ module accelerator #(
 	input [NUM_ACTIONS-1:0] ft_action,
 	input [FT_ADDR_WIDTH-1:0] ft_addr,
 	input setup_ft,
+	input end_of_pkt,
+	input dpi_true,
+	input matcher_match,
 	
     output [NUM_ACTIONS-1:0] action_out,
     output reg [NUM_THREADS-1:0] thread_id_out,
@@ -50,6 +53,7 @@ wire tcam_match_out;
 wire [FT_ADDR_WIDTH-1:0] tcam_addr_out;
 wire [FT_ADDR_WIDTH-1:0] dram_rd_addr_in;
 wire [31:0] ipmatch_in;
+wire counter_wen;
 reg [NUM_THREADS-1:0] thread_id_d1;
 reg acc_done_d1;
 assign counter_write_addr_in = tcam_addr_out;
@@ -58,12 +62,16 @@ assign dram_rd_addr_in = tcam_addr_out;
 assign ipmatch_in = setup_ft ? ft_ip : ip_in;
 assign match_true = tcam_match_out;
 
+wire dpi_signal;
+assign dpi_signal = matcher_match || ~dpi_true;
+assign counter_wen = tcam_match_out && dpi_signal && end_of_pkt;
+
 counter ctr (
     .clk					(clk), 
 	 .reset					(reset),
     .write_addr_in			(counter_write_addr_in), 
     .count_rd_addr_in		(counter_rd_addr_in), 
-    .match_in				(counter_match_in), 
+    .match_in				(counter_wen), 
     .read_counter			(read_counter), 
     .count_out				(count_out)
     );

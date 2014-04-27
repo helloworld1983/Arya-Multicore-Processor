@@ -23,7 +23,7 @@
 module regfile
    #(parameter DATAPATH_WIDTH = 64,
 	  parameter REGFILE_ADDR_WIDTH = 5,
-	  parameter NUM_ACTIONS = 4,
+	  parameter NUM_ACTIONS = 8,
 	  parameter THREAD_BITS = 2
 	  )
 
@@ -60,22 +60,16 @@ always @(posedge clk) begin
     end else if (action_wen) begin
 		case (action_thread_id_in)
 			0: begin
-				regfile[7] <= action_data_in;
+				regfile[7] <= {action_data_in,48'h00000000000000};
+				regfile[6] <= 64'h00FFFFFFFFFFFFFF;
 			end
 			1: begin
-				regfile[15] <= action_data_in;
-			end
-			2: begin
-				regfile[23] <= action_data_in;
-			end
-			3: begin
-				regfile[31] <= action_data_in;
+				regfile[15] <= {action_data_in,48'h00000000000000};
+				regfile[14] <= 64'h00FFFFFFFFFFFFFF;
 			end
 			default: begin
 				regfile[7] <= 0;
 				regfile[15] <= 0;
-				regfile[23] <= 0;
-				regfile[31] <= 0;
 				end // defauly
 		endcase 
 	end // else if action wen

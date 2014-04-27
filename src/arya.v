@@ -20,7 +20,7 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 module arya #(
-	parameter 	REGFILE_ADDR_WIDTH 	= 	5,
+	parameter 	REGFILE_ADDR_WIDTH 	= 	4,
 	parameter 	DATAPATH_WIDTH	 	= 	64,
 	parameter	INST_WIDTH 			= 	32,
 	parameter 	MEM_ADDR_WIDTH		= 	8,

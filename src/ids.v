@@ -2,18 +2,18 @@
 `timescale 1ns/1ps
 // defines
 
-`define REGFILE_ADDR_WIDTH 	5
+`define REGFILE_ADDR_WIDTH 		4
 `define MEM_ADDR_WIDTH 			8
-`define INST_ADDR_WIDTH 		6
+`define INST_ADDR_WIDTH 		7
 `define NUM_COUNTERS 			0
-`define NUM_SOFTWARE_REGS 		11
-`define NUM_HARDWARE_REGS 		5
+`define NUM_SOFTWARE_REGS 		13
+`define NUM_HARDWARE_REGS 		6
 `define NUM_THREADS				4
 `define	NUM_CORES				2
 `define NUM_THREADS_PER_CORE	2
 `define INST_WIDTH				32
 `define FT_COUNTER_ADDR_WIDTH   4
-`define NUM_ACTIONS				4
+`define NUM_ACTIONS				8
 `define THREAD_BITS_PER_CORE	1
 `define THREAD_BITS				2
 `define FT_ADDR_WIDTH			4
@@ -23,7 +23,9 @@ module ids
 #(
 	parameter DATA_WIDTH = 64,
 	parameter CTRL_WIDTH = DATA_WIDTH/8,
-	parameter UDP_REG_SRC_WIDTH = 2
+	parameter UDP_REG_SRC_WIDTH = 2,
+	parameter param_pattern_high = 32'h7F313131,
+	parameter param_pattern_low  = 32'h31313131
 )
 (
 	input  [DATA_WIDTH-1:0]             in_data,
@@ -86,12 +88,11 @@ reg	[`THREAD_BITS-1:0]			current_thread_next, current_thread, current_thread_1;
 wire [(`INST_ADDR_WIDTH - 1) + 2:0]	input_inst_addr[0:`NUM_CORES-1];
 wire [31:0]	input_inst[0:`NUM_CORES-1];
 wire    cmd_setup_mem [0:`NUM_CORES-1];
-wire    cmd_verify_mem [0:`NUM_CORES-1];
-wire    cmd_debug_on [0:`NUM_CORES-1];
 
 reg  [31:0]                 	num_packets_in_next;
 wire [31:0] 					halt_counter[0:`NUM_CORES-1];
 wire [31:0]						output_inst[0:`NUM_CORES-1];
+reg [31:0] 						pattern_matches;
 
 // software registers 
 wire [31:0]                		dbs_cmd_0;
@@ -105,6 +106,8 @@ wire [31:0]						dbs_ft_ip;
 wire [31:0]						dbs_ft_action;
 wire [31:0]						dbs_ft_addr;
 wire [31:0] 					dbs_compare_ip_in;
+wire [31:0]						dbs_pattern_high;
+wire [31:0]						dbs_pattern_low;
 
 
 // hardware registers
@@ -113,6 +116,7 @@ reg [31:0]                    	dbh_output_inst_1;
 reg [31:0]                      dbh_num_packets_in;
 reg [31:0]						dbh_ft_count_output;
 reg [31:0]						dbh_num_matches;
+reg [31:0] 						dbh_pattern_matches;
 
 // internal state
 reg [1:0]                     	state, state_next;
@@ -153,18 +157,26 @@ wire	[DATA_WIDTH*`NUM_THREADS_PER_CORE-1:0] arya_datamem_data_out [0:`NUM_CORES-
 wire	[`NUM_THREADS_PER_CORE-1:0] arya_datamem_we_out [0:`NUM_CORES-1];
 
 
+/* Matcher Wires */
+wire matcher_en;
+wire matcher_ce;
+wire matcher_reset;
+reg [31:0]                    matches_next;
+reg                           in_pkt_body, in_pkt_body_next;
+reg                           end_of_pkt, end_of_pkt_next;
+
+assign matcher_en = (!in_fifo_empty && out_rdy && in_pkt_body);
+assign matcher_ce = (!in_fifo_empty && out_rdy);
+assign matcher_reset = (reset ||  end_of_pkt);
+
 
 assign input_inst_addr[0] = dbs_input_inst_addr_0[(`INST_ADDR_WIDTH-1) + 2:0];
 assign input_inst[0] = dbs_input_inst_0;
 assign cmd_setup_mem[0] = dbs_cmd_0[1];
-assign cmd_verify_mem[0] = dbs_cmd_0[2];
-assign cmd_debug_on[0] = dbs_cmd_0[23];
 
 assign input_inst_addr[1] = dbs_input_inst_addr_1[(`INST_ADDR_WIDTH-1) + 2:0];
 assign input_inst[1] = dbs_input_inst_1;
 assign cmd_setup_mem[1] = dbs_cmd_1[1];
-assign cmd_verify_mem[1] = dbs_cmd_1[2];
-assign cmd_debug_on[1] = dbs_cmd_1[23];
 
 assign in_rdy     = !in_fifo_nearly_full;
 assign input_fifo_rd_en = in_fifo_rd_en && ~stop_smallfifo_rd;
@@ -193,6 +205,19 @@ fallthrough_small_fifo #(
 	.reset         (reset),
 	.clk           (clk)
 );
+
+   detect7B matcher (
+      .ce            (matcher_ce),           // data enable
+      .match_en      (matcher_en),           // match enable
+      .clk           (clk),
+      .pipe1         ({in_fifo_ctrl, in_fifo_data}),   // Data in
+      .hwregA        ({dbs_pattern_high, dbs_pattern_low}),   // pattern in
+//      .hwregA        ({param_pattern_high, param_pattern_low}),   // pattern in
+      .match         (matcher_match),        // match out
+      .mrst          (matcher_reset)         // reset in
+   );
+   
+   
 infifo_arbiter #(
 	.NUM_THREADS							(`NUM_THREADS),
 	.THREAD_BITS							(`THREAD_BITS)
@@ -236,8 +261,8 @@ outfifo_arbiter #(
 
 wire [DATA_WIDTH-1:0]arya_datamem_data_in [0:`NUM_CORES-1];
 wire [`NUM_THREADS_PER_CORE-1:0] arya_thread_id_out [0:`NUM_CORES-1];
-wire [`NUM_THREADS_PER_CORE-1:0] previous_thread_id_out_0;
-wire [`NUM_THREADS_PER_CORE-1:0] previous_thread_id_out_1;
+wire [`THREAD_BITS_PER_CORE-1:0] previous_thread_id_out_0;
+wire [`THREAD_BITS_PER_CORE-1:0] previous_thread_id_out_1;
 
 wire [31:0] output_inst_high [0:`NUM_CORES-1];
 wire [31:0] output_inst_low [0:`NUM_CORES-1];
@@ -254,8 +279,8 @@ wire [31:0] ft_count_output;
 reg [DATA_WIDTH-1:0] source_ip,source_ip_next;
 reg [DATA_WIDTH-1:0] start_in_next,start_in;
 	
-assign arya_action_done[0] = action_done && ~action_thread_id[`THREAD_BITS-1];
-assign arya_action_done[1] = action_done && action_thread_id[`THREAD_BITS-1];
+assign arya_action_done[0] = end_of_pkt && ~action_thread_id[`THREAD_BITS-1];
+assign arya_action_done[1] = end_of_pkt && action_thread_id[`THREAD_BITS-1];
 	
 	
 	genvar j;
@@ -408,6 +433,7 @@ end
 	.start_in						(start_in),
 	.counter_rd_addr_in				(dbs_counter_read_addr[`FT_ADDR_WIDTH-1:0]),
 	.read_counter					(dbs_counter_read_addr[`FT_ADDR_WIDTH]),
+	//.read_counter					(0),
 	.ft_ip							(dbs_ft_ip),
 	.ft_action						(dbs_ft_action),
 	.ft_addr						(dbs_ft_addr[`FT_ADDR_WIDTH-1:0]),
@@ -416,26 +442,14 @@ end
 	.action_out						(action_out),
 	.thread_id_out					(action_thread_id),
 	.acc_done						(action_done),
-	.count_out						(ft_count_output)
-	//.match_true						(match_true)
+	.count_out						(ft_count_output),
+	.end_of_pkt						(end_of_pkt),
+	.dpi_true						(dbs_compare_ip_in[0]),
+	.matcher_match					(matcher_match),
+	.match_true						(match_true)
 	);
 	/// accelerator ///////
 	
-	wire [31:0] compare_ip_in = dbs_compare_ip_in;
-	/*
-	//wire [31:0] compare_ip_in = 'h0a010003;
-	accelerator_box acc_box (
-	.header_in				(source_ip),
-	.compare_value			(compare_ip_in),
-	.start_in				(start_in),
-	.thread_id_in			(current_thread),
-	.clk					(clk),
-	.reset					(reset),
-	.action_done			(action_done),
-	.action					(action_out),
-	.thread_id_out			(action_thread_id)
-	);
-	*/
 	
 	
 	generic_regs
@@ -466,10 +480,10 @@ end
 	.counter_decrement(),
 
 	// --- SW regs interface
-	.software_regs    ({dbs_compare_ip_in,dbs_ft_addr, dbs_ft_action, dbs_ft_ip, dbs_counter_read_addr, dbs_input_inst_1,dbs_input_inst_addr_1,dbs_input_inst_0,dbs_input_inst_addr_0,dbs_cmd_1,dbs_cmd_0}),
+	.software_regs    ({dbs_pattern_low, dbs_pattern_high, dbs_compare_ip_in,dbs_ft_addr, dbs_ft_action, dbs_ft_ip, dbs_counter_read_addr, dbs_input_inst_1,dbs_input_inst_addr_1,dbs_input_inst_0,dbs_input_inst_addr_0,dbs_cmd_1,dbs_cmd_0}),
 
 	// --- HW regs interface
-	.hardware_regs    ({dbh_num_matches, dbh_ft_count_output, dbh_num_packets_in, dbh_output_inst_1,dbh_output_inst_0}),
+	.hardware_regs    ({dbh_pattern_matches, dbh_num_matches, dbh_ft_count_output, dbh_num_packets_in, dbh_output_inst_1,dbh_output_inst_0}),
 
 
 	.clk              (clk),
@@ -491,6 +505,9 @@ always @(*) begin
     num_packets_in_next = dbh_num_packets_in;
 	source_ip_next = source_ip;
 	start_in_next = start_in;
+	end_of_pkt_next = end_of_pkt;
+    in_pkt_body_next = in_pkt_body;
+	pattern_matches = dbh_pattern_matches;
 	
 	if (!in_fifo_empty && out_rdy) begin
 		out_wr_int_next = 1;
@@ -501,11 +518,13 @@ always @(*) begin
 			START: begin
 			enable_cpu_next = 0;
 			dropfifo_write_next = 0;
+			end_of_pkt_next = 0;   // takes matcher out of reset
 			if (~stop_smallfifo_rd) begin
 			if (in_fifo_ctrl_p != 0) begin
 				state_next = HEADER;
 				begin_pkt_next = 1;
 				dropfifo_write_next = 1;
+
 			end // if (in_fifo_ctrl_p != 0)
 			end // if (~stop_smallfifo_rd)
 			end // START
@@ -517,8 +536,8 @@ always @(*) begin
 					source_ip_next = in_fifo_data_p;
 					start_in_next = 1;
 				end else begin
-					source_ip_next = 0;
-					start_in_next = 0;
+					//source_ip_next = 0;
+					//start_in_next = 0;
 				end
 				if (header_counter_next == 5) begin
 					state_next = PAYLOAD;
@@ -532,7 +551,14 @@ always @(*) begin
 				enable_cpu_next = 1;
 				current_thread_next = current_thread_next + 1;
                 num_packets_in_next = num_packets_in_next + 1;
-			end // if (in_fifo_ctrl_p !=0)
+				end_of_pkt_next = 1;   // will reset matcher
+                in_pkt_body_next = 0;
+                if (matcher_match) begin
+                     pattern_matches = dbh_pattern_matches + 1;
+                end				
+            end else begin
+                  in_pkt_body_next = 1;
+            end
 			end // PAYLOAD
 		endcase // case(state)
 	end
@@ -557,12 +583,16 @@ always @(posedge clk) begin
 		start_in <=0;
 		source_ip <= 0;
 		num_matches <=0;
+		end_of_pkt <= 0;
+        in_pkt_body <= 0;
+		
         
 		dbh_output_inst_0 <= 0;
         dbh_output_inst_1 <= 0;
         dbh_num_packets_in <= 0;
 		dbh_ft_count_output <= 0;
 		dbh_num_matches <= 0;
+		dbh_pattern_matches <= 0;
 		
 	end
 	else begin
@@ -585,6 +615,8 @@ always @(posedge clk) begin
 		current_thread_1 <= current_thread;
 		start_in <= start_in_next;
 		source_ip <= source_ip_next;
+		end_of_pkt <= end_of_pkt_next;
+        in_pkt_body <= in_pkt_body_next;
 		
 		if (match_true) begin
 			num_matches <= num_matches + 1;
@@ -597,6 +629,7 @@ always @(posedge clk) begin
         dbh_num_packets_in <= num_packets_in_next;
 		dbh_ft_count_output <= ft_count_output;
 		dbh_num_matches <= num_matches;
+		dbh_pattern_matches <= pattern_matches;
 	end // else: !if(reset)
 end // always @ (posedge clk)   
 
